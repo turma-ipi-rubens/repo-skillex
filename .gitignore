@@ -28,6 +28,7 @@ coverage/
 # Playwright (E2E)
 test-results/
 e2e/report/
+e2e/snapshots/
 playwright-report/
 blob-report/
 .last-run.json
