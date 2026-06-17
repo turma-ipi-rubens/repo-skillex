@@ -9,6 +9,7 @@ para facilitar tanto a leitura acadêmica quanto a execução do projeto.
 |-----------|----------|
 | 📑 [DOCUMENTACAO-TCC.md](DOCUMENTACAO-TCC.md) | Documento acadêmico completo: descrição, objetivos, justificativa, arquitetura, modelagem, algoritmo de match, segurança e melhorias futuras |
 | 🚀 [INSTALACAO.md](INSTALACAO.md) | Passo a passo de instalação, execução e contas de teste |
+| 🐳 [DOCKER.md](DOCKER.md) | Como subir a plataforma com Docker Compose (script `deploy.sh`) |
 | 🔌 [API.md](API.md) | Referência de todos os *endpoints* da API REST |
 | 🎤 [ROTEIRO-APRESENTACAO.md](ROTEIRO-APRESENTACAO.md) | Roteiro de demonstração e respostas para a banca |
 
