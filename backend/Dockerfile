@@ -3,7 +3,12 @@
 # =============================================================================
 
 # ─── Stage 1: Build ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
+
+# OpenSSL + ca-certificates necessários para os binários do Prisma
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openssl ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -21,7 +26,12 @@ COPY src ./src
 RUN npm run build
 
 # ─── Stage 2: Runner (produção) ───────────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
+
+# OpenSSL é necessário em runtime para Prisma; wget é usado pelo healthcheck do compose
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        openssl ca-certificates wget \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
