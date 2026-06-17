@@ -56,23 +56,35 @@ check_docker() {
 
 ensure_env_file() {
   if [ ! -f .env ]; then
-    if [ -f .env.docker ]; then
-      cp .env.docker .env
-      ok "Arquivo .env criado a partir de .env.docker"
-      # Gera JWT_SECRET aleatório se openssl estiver disponível e estivermos com o placeholder
-      if command -v openssl >/dev/null 2>&1 && grep -q "CHANGE-ME" .env; then
-        local secret
-        secret="$(openssl rand -hex 32)"
-        # Usa um delimitador diferente de "/" para não conflitar com o valor
-        sed -i.bak "s|^JWT_SECRET=.*|JWT_SECRET=${secret}|" .env && rm -f .env.bak
-        ok "JWT_SECRET aleatório gerado e gravado em .env"
-      else
-        warn "Edite .env e defina um JWT_SECRET forte antes de expor em produção"
-      fi
-    else
-      fail "Nem .env nem .env.docker foram encontrados na raiz"
-    fi
+    [ -f .env.example ] || fail "Nem .env nem .env.example foram encontrados na raiz"
+    cp .env.example .env
+    ok "Arquivo .env criado a partir de .env.example"
   fi
+
+  if ! command -v openssl >/dev/null 2>&1; then
+    warn "openssl não encontrado — edite .env e gere segredos manualmente para todos os CHANGE-ME"
+    return
+  fi
+
+  # Cada par 'KEY|MOTIVO' troca o placeholder CHANGE-ME-* por um segredo aleatório
+  # apenas se a chave ainda estiver com o placeholder. Roda no .env existente
+  # também — preenche segredos novos (ex: Jitsi) sem mexer no que já foi setado.
+  local changed=0 key secret
+  for key in \
+    JWT_SECRET \
+    JITSI_APP_SECRET \
+    JITSI_JICOFO_COMPONENT_SECRET \
+    JITSI_JICOFO_AUTH_PASSWORD \
+    JITSI_JVB_AUTH_PASSWORD
+  do
+    if grep -qE "^${key}=CHANGE-ME" .env; then
+      secret="$(openssl rand -hex 32)"
+      sed -i.bak "s|^${key}=.*|${key}=${secret}|" .env && rm -f .env.bak
+      ok "${key} aleatório gerado e gravado em .env"
+      changed=1
+    fi
+  done
+  [ $changed -eq 0 ] && ok "Segredos do .env já preenchidos — nada a gerar"
 }
 
 # ─── Bootstrap (provisiona uma VPS Ubuntu/Debian virgem) ─────────────────────

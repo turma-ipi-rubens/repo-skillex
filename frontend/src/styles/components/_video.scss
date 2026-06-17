@@ -1,0 +1,53 @@
+// ----- Vídeo chamada Jitsi -----
+.video-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #0b0b0f;
+  display: flex;
+  flex-direction: column;
+  animation: fade-in 0.2s ease;
+}
+
+.video-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 600;
+}
+
+.video-modal__body {
+  flex: 1;
+  position: relative;
+  background: #000;
+
+  // O iframe gerado pelo @jitsi/react-sdk precisa preencher o container
+  > div,
+  iframe {
+    width: 100% !important;
+    height: 100% !important;
+    border: 0;
+  }
+}
+
+.video-modal__loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-3);
+  height: 100%;
+  color: #fff;
+}
+
+.video-cta {
+  // Botão "Iniciar vídeo chamada" reaproveita estética do btn--primary,
+  // mas com um leve destaque para sinalizar feature principal.
+  background: var(--color-primary);
+  color: var(--on-primary);
+  font-weight: 700;
+}

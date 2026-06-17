@@ -1,0 +1,148 @@
+# =============================================================================
+#  SkillEx — Stack Jitsi Meet (self-hosted, 100% independente da Jitsi.org)
+# =============================================================================
+#  Subir junto com o sistema principal:
+#    cp .env.example .env                 # se ainda não existir
+#    # preencha os 4 segredos Jitsi (ou rode: ./scripts/deploy.sh up — gera tudo)
+#    docker compose -f docker-compose.yml -f compose.jitsi.yml up --build
+#
+#  Antes de subir pela 1ª vez:
+#    - Adicione `127.0.0.1 jitsi.localhost` no hosts do sistema
+#    - Gere segredos:  openssl rand -hex 32 (um por *_PASSWORD/*_SECRET)
+#
+#  Backend e Compose lêem o MESMO .env na raiz — não há `.env.jitsi` separado.
+#  Acesso direto à instância (smoke test): http://jitsi.localhost:8000
+# =============================================================================
+
+services:
+
+  # ─── Frontend Jitsi (nginx + UI + external_api.js) ────────────────────────
+  jitsi-web:
+    image: jitsi/web:stable-9779
+    restart: unless-stopped
+    ports:
+      - "${JITSI_HTTP_PORT:-8000}:80"
+    volumes:
+      - jitsi_web_config:/config
+      - jitsi_web_transcripts:/usr/share/jitsi-meet/transcripts
+    environment:
+      ENABLE_AUTH: 1
+      ENABLE_GUESTS: 0
+      ENABLE_LOBBY: 0
+      ENABLE_PREJOIN_PAGE: 0
+      AUTH_TYPE: jwt
+      JWT_APP_ID: ${JITSI_APP_ID:-skillex}
+      JWT_APP_SECRET: ${JITSI_APP_SECRET}
+      JWT_ACCEPTED_ISSUERS: ${JITSI_APP_ID:-skillex}
+      JWT_ACCEPTED_AUDIENCES: ${JITSI_APP_ID:-skillex}
+      PUBLIC_URL: ${JITSI_PUBLIC_URL:-http://jitsi.localhost:8000}
+      XMPP_DOMAIN: ${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_BOSH_URL_BASE: http://prosody:5280
+      XMPP_GUEST_DOMAIN: guest.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      TZ: ${TZ:-America/Sao_Paulo}
+      # CORS liberado para o frontend SkillEx (origem que carregará o iframe).
+      ENABLE_XMPP_WEBSOCKET: 1
+    depends_on:
+      - prosody
+
+  # ─── XMPP (sinalização + auth JWT) ─────────────────────────────────────────
+  prosody:
+    image: jitsi/prosody:stable-9779
+    restart: unless-stopped
+    expose:
+      - "5222"
+      - "5347"
+      - "5280"
+    volumes:
+      - jitsi_prosody_config:/config
+      - jitsi_prosody_plugins:/prosody-plugins-custom
+    environment:
+      AUTH_TYPE: jwt
+      ENABLE_AUTH: 1
+      ENABLE_GUESTS: 0
+      JWT_APP_ID: ${JITSI_APP_ID:-skillex}
+      JWT_APP_SECRET: ${JITSI_APP_SECRET}
+      JWT_ACCEPTED_ISSUERS: ${JITSI_APP_ID:-skillex}
+      JWT_ACCEPTED_AUDIENCES: ${JITSI_APP_ID:-skillex}
+      JWT_ALLOW_EMPTY: 0
+      JWT_AUTH_TYPE: token
+      GLOBAL_MODULES: ""
+      GLOBAL_CONFIG: ""
+      XMPP_DOMAIN: ${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_GUEST_DOMAIN: guest.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_MODULES: ""
+      XMPP_MUC_MODULES: ""
+      XMPP_INTERNAL_MUC_MODULES: ""
+      # Contas de sistema (jicofo/jvb autenticam contra o prosody)
+      JICOFO_COMPONENT_SECRET: ${JITSI_JICOFO_COMPONENT_SECRET}
+      JICOFO_AUTH_USER: focus
+      JICOFO_AUTH_PASSWORD: ${JITSI_JICOFO_AUTH_PASSWORD}
+      JVB_AUTH_USER: jvb
+      JVB_AUTH_PASSWORD: ${JITSI_JVB_AUTH_PASSWORD}
+      TZ: ${TZ:-America/Sao_Paulo}
+
+  # ─── Focus de conferência ──────────────────────────────────────────────────
+  jicofo:
+    image: jitsi/jicofo:stable-9779
+    restart: unless-stopped
+    volumes:
+      - jitsi_jicofo_config:/config
+    environment:
+      AUTH_TYPE: jwt
+      ENABLE_AUTH: 1
+      XMPP_DOMAIN: ${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_SERVER: prosody
+      JICOFO_COMPONENT_SECRET: ${JITSI_JICOFO_COMPONENT_SECRET}
+      JICOFO_AUTH_USER: focus
+      JICOFO_AUTH_PASSWORD: ${JITSI_JICOFO_AUTH_PASSWORD}
+      JVB_BREWERY_MUC: jvbbrewery
+      TZ: ${TZ:-America/Sao_Paulo}
+    depends_on:
+      - prosody
+
+  # ─── Video bridge (RTP/UDP 10000) ──────────────────────────────────────────
+  jvb:
+    image: jitsi/jvb:stable-9779
+    restart: unless-stopped
+    ports:
+      - "${JVB_PORT:-10000}:10000/udp"
+      - "${JVB_TCP_PORT:-4443}:4443"
+    volumes:
+      - jitsi_jvb_config:/config
+    environment:
+      DOCKER_HOST_ADDRESS: ${JITSI_DOCKER_HOST_ADDRESS:-127.0.0.1}
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_SERVER: prosody
+      JVB_AUTH_USER: jvb
+      JVB_AUTH_PASSWORD: ${JITSI_JVB_AUTH_PASSWORD}
+      JVB_BREWERY_MUC: jvbbrewery
+      JVB_PORT: 10000
+      JVB_TCP_HARVESTER_DISABLED: "true"
+      TZ: ${TZ:-America/Sao_Paulo}
+    depends_on:
+      - prosody
+
+volumes:
+  jitsi_web_config:
+    driver: local
+  jitsi_web_transcripts:
+    driver: local
+  jitsi_prosody_config:
+    driver: local
+  jitsi_prosody_plugins:
+    driver: local
+  jitsi_jicofo_config:
+    driver: local
+  jitsi_jvb_config:
+    driver: local

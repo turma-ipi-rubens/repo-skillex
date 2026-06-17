@@ -173,7 +173,7 @@ A distribuição detalhada de tasks por membro está em [`TASKS.md`](TASKS.md).
 - Hardening: `helmet`, rate-limit, validação Zod global, headers de segurança.
 - Exclusão de conta com anonimização (LGPD).
 - PWA: manifest + service worker + ícones múltiplas resoluções.
-- Swagger UI em `/api/docs`.
+- Swagger UI em `/api-docs`.
 - Suíte de testes 100% (Vitest + Playwright E2E).
 - Documentação final atualizada (README + roteiro de apresentação).
 

@@ -11,8 +11,17 @@ Cobertura completa em três camadas (pirâmide de testes): **unitários**, **int
 ## Cobertura
 
 - **Backend:** 100% de statements, branches, functions e lines (gate no `vitest.config.ts`). Banco de teste isolado em `backend/prisma/test.db` (nunca toca o `dev.db`).
-- **Frontend:** 100% na camada de **lógica + componentes reutilizáveis** (`utils`, `services`, `contexts`, `hooks`, `components`). As **páginas (view)** são validadas pelos testes **E2E**.
+- **Frontend:** 100% na camada de **lógica + componentes reutilizáveis** (`utils`, `services`, `contexts`, `hooks`, `components/ui` básicos). As **páginas (view)** são validadas pelos testes **E2E**.
 - Os poucos ramos marcados com `/* v8 ignore */` são guardas defensivos comprovadamente inalcançáveis (campos sempre presentes via `include` do Prisma, usuário autenticado garantido). Cada um traz uma justificativa no código.
+
+> ⚠️ **Itens fora da cobertura unitária do frontend hoje** (validados
+> manualmente ou pelos E2E): `components/VideoCall.tsx` (iframe Jitsi —
+> exigiria *mock* do `@jitsi/react-sdk`), `components/ui/Charts.tsx`
+> (gráficos SVG do dashboard admin) e `utils/exports.ts` (geração de CSV /
+> impressão). O gate de 100% definido em `frontend/vitest.config.ts` ainda
+> aponta para `src/components/**` e `src/utils/**`, portanto `npm run test:cov`
+> **falha o gate** enquanto esses três arquivos não tiverem testes próprios.
+> `npm test` (sem coverage) passa normalmente.
 
 ## Tempo real (socket.io)
 

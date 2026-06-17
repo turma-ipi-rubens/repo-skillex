@@ -5,6 +5,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Icon } from '../components/ui/Icon';
 import { Spinner } from '../components/ui/Spinner';
+import { VideoCall } from '../components/VideoCall';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useRealtime, useRequestRoom } from '../hooks/useRealtime';
@@ -21,6 +22,7 @@ export function RequestDetail() {
   const [messages, setMessages] = useState<any[] | null>(null);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
+  const [callOpen, setCallOpen] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
 
   const reload = useCallback(async () => {
@@ -72,6 +74,12 @@ export function RequestDetail() {
   // perder mensagens enviadas antes de a room ficar ativa (ou em reconexões).
   useRealtime('request:joined', (joinedId: any) => {
     if (joinedId === id && chatOpen) refreshChatMessages();
+  });
+  // Outro participante abriu a sala de vídeo: avisa via toast.
+  useRealtime('request:call-started', (p: any) => {
+    if (p?.requestId !== id) return;
+    if (p?.startedBy?.id === me?.id) return;
+    toast(`${p?.startedBy?.name ?? 'Alguém'} entrou na vídeo chamada`, 'info');
   });
 
   if (error) return <EmptyState icon="emoji-frown" title="Solicitação não encontrada" />;
@@ -209,6 +217,14 @@ export function RequestDetail() {
       </div>
 
       <div id="actions">
+        {r.status === 'ACCEPTED' && (
+          <button
+            className="btn btn--block mb-16 video-cta"
+            onClick={() => setCallOpen(true)}
+          >
+            <Icon name="camera-video" /> Iniciar vídeo chamada
+          </button>
+        )}
         {actionButtons.length > 0 && (
           <div className="btn-row mb-16">
             {actionButtons.map((b) => (
@@ -289,6 +305,14 @@ export function RequestDetail() {
             </button>
           </form>
         </>
+      )}
+
+      {callOpen && id && (
+        <VideoCall
+          requestId={id}
+          otherUserName={r.otherUser?.name}
+          onClose={() => setCallOpen(false)}
+        />
       )}
     </>
   );

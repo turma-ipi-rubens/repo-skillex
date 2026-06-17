@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as requestController from './request.controller';
+import * as videoController from '../video/video.controller';
 import { asyncHandler } from '../../utils/async-handler';
 import { authenticate } from '../../middlewares/auth';
 
@@ -17,3 +18,5 @@ requestRoutes.post('/:id/complete', asyncHandler(requestController.complete));
 
 requestRoutes.get('/:id/messages', asyncHandler(requestController.listMessages));
 requestRoutes.post('/:id/messages', asyncHandler(requestController.sendMessage));
+
+requestRoutes.get('/:id/video-token', asyncHandler(videoController.getToken));

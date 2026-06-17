@@ -513,7 +513,7 @@ Como equipe técnica, queremos cobertura de testes elevada, para garantir confia
 Como desenvolvedor, quero acessar documentação interativa da API, para entender e testar endpoints.
 
 **Critérios de Aceitação**
-- Swagger UI exposto em `/api/docs`.
+- Swagger UI exposto em `/api-docs` (e JSON cru em `/api-docs.json`).
 - Todas as rotas documentadas com schemas Zod convertidos.
 
 **Prioridade:** Média

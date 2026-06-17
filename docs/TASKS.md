@@ -292,7 +292,7 @@ Este documento detalha as tasks técnicas de cada **História de Usuário (US)**
 
 `[US12][INFRA][T04]` — CI GitHub Actions: lint + testes backend (Vitest) + testes frontend (Vitest) + testes E2E (Playwright) em PRs. → **@guilherme**
 
-`[US12][API][T05]` — Swagger UI em `/api/docs` com schemas Zod convertidos via `zod-to-openapi`. → **@pablo**
+`[US12][API][T05]` — Swagger UI em `/api-docs` (via `swagger-jsdoc` + `swagger-ui-express`). → **@pablo**
 
 `[US12][QA][T06]` — Testes E2E Playwright cobrindo fluxos críticos: cadastro, login, criação de solicitação, aceitação + chat, conclusão + avaliação, wallet, admin. → **@geovane**
 

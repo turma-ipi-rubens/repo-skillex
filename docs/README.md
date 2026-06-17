@@ -9,9 +9,11 @@ para facilitar tanto a leitura acadêmica quanto a execução do projeto.
 |-----------|----------|
 | 📑 [DOCUMENTACAO-TCC.md](DOCUMENTACAO-TCC.md) | Documento acadêmico completo: descrição, objetivos, justificativa, arquitetura, modelagem, algoritmo de match, segurança e melhorias futuras |
 | 🚀 [INSTALACAO.md](INSTALACAO.md) | Passo a passo de instalação, execução e contas de teste |
-| 🐳 [DOCKER.md](DOCKER.md) | Como subir a plataforma com Docker Compose (script `deploy.sh`) |
-| 🔌 [API.md](API.md) | Referência de todos os *endpoints* da API REST |
+| 🐳 [DOCKER.md](DOCKER.md) | Como subir a plataforma com Docker Compose (script `deploy.sh`) e a stack Jitsi self-hosted |
+| 🔌 [API.md](API.md) | Referência de todos os *endpoints* da API REST + WebSocket + Swagger UI |
+| 🧪 [TESTING.md](TESTING.md) | Estratégia de testes (unitário + integração + E2E Playwright) |
 | 🎤 [ROTEIRO-APRESENTACAO.md](ROTEIRO-APRESENTACAO.md) | Roteiro de demonstração e respostas para a banca |
+| 📋 [BACKLOGS.md](BACKLOGS.md) · [DER.md](DER.md) · [CRONOGRAMA_SPRINTS.md](CRONOGRAMA_SPRINTS.md) · [TASKS.md](TASKS.md) · [GUIA_PADRONIZAÇÃO.md](GUIA_PADRONIZAÇÃO.md) | Documentação de Sprint 0 (planejamento, modelagem, governança) |
 
 ## Resumo rápido
 

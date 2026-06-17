@@ -2,7 +2,7 @@
 #  SkillEx — Docker Compose
 # =============================================================================
 #  Uso rápido:
-#    cp .env.docker .env          # ajuste JWT_SECRET antes de subir em produção
+#    cp .env.example .env         # ajuste JWT_SECRET antes de subir em produção
 #    docker compose up --build    # build + start
 #    docker compose up -d         # start em segundo plano
 #    docker compose down -v       # encerra e remove volumes (apaga dados!)
@@ -29,6 +29,10 @@ services:
       MAX_UPLOAD_SIZE_MB: ${MAX_UPLOAD_SIZE_MB:-5}
       # URL do frontend (usada no header CORS)
       CLIENT_URL: http://localhost
+      # Jitsi self-hosted (necessário para o endpoint /requests/:id/video-token)
+      JITSI_DOMAIN: ${JITSI_DOMAIN:-jitsi.localhost:8000}
+      JITSI_APP_ID: ${JITSI_APP_ID:-skillex}
+      JITSI_APP_SECRET: ${JITSI_APP_SECRET:-}
     volumes:
       - skillex_data:/app/data
       - skillex_uploads:/app/uploads

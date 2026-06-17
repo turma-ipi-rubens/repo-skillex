@@ -12,6 +12,7 @@ build/
 
 # Variáveis de ambiente
 .env
+.env.*.local
 
 # Uploads de usuários
 backend/uploads/*

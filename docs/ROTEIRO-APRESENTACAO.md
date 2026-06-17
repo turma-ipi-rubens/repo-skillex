@@ -32,10 +32,13 @@ quer aprender violino"**.
 ## 2. Visão geral e stack
 
 - Plataforma **web, mobile-first**, inspirada em redes sociais.
-- **Back-end:** Node.js + TypeScript + Express + Prisma + SQLite.
-- **Front-end:** React + TypeScript + SCSS (SPA), com tema claro/escuro.
-- **Segurança:** JWT, senhas com *hash*, validação com Zod, proteção contra SQL
-  Injection e XSS.
+- **Back-end:** Node.js + TypeScript + Express + Prisma + SQLite + socket.io.
+- **Front-end:** React + TypeScript + SCSS (SPA) + PWA, com tema claro/escuro.
+- **Vídeo chamada:** Jitsi Meet **self-hosted** (sala embutida via JWT — nada
+  passa pela Jitsi.org).
+- **Segurança:** JWT, senhas com *hash* bcrypt, validação com Zod, *rate limit*
+  por IP, proteção contra SQL Injection e XSS.
+- **Qualidade:** cobertura de testes 100% (Vitest + Supertest + Playwright E2E).
 
 ## 3. Roteiro de demonstração ao vivo
 
@@ -49,12 +52,21 @@ quer aprender violino"**.
    ensina/quer aprender e as **avaliações**.
 5. **Solicitar troca** — proponha "Tricô por Violino", envie e mostre a solicitação
    criada.
-6. **Trocar de usuário** — faça login como `ana@skillex.com` e **aceite** a
-   solicitação; mostre o **chat** e o botão **Concluir**.
-7. **Avaliação** — após concluir, dê uma nota de 1 a 5 estrelas.
-8. **Carteira** — mostre o saldo, o **histórico de transações** e a recarga de moedas.
-9. **Busca** — filtre por uma habilidade (ex.: "Inglês") e mostre os filtros avançados.
-10. **Painel admin** (logado como Ana) — mostre as **estatísticas da plataforma**.
+6. **Trocar de usuário** — faça login como `ana@skillex.com` (em outro navegador
+   ou aba anônima) e **aceite** a solicitação; mostre o **chat em tempo real**
+   (a mensagem aparece nos dois navegadores sem reload) e o botão **Concluir**.
+7. **Vídeo chamada** — clique **Iniciar vídeo chamada** no detalhe da solicitação
+   aceita; mostre a sala Jitsi embutida (self-hosted, sem chamar a Jitsi.org)
+   carregando com JWT — e o outro participante recebendo o alerta ao vivo.
+8. **Avaliação** — após concluir, dê uma nota de 1 a 5 estrelas.
+9. **Carteira** — mostre o saldo, o **histórico de transações** e a recarga de moedas.
+10. **Busca** — filtre por uma habilidade (ex.: "Inglês") e mostre os filtros avançados.
+11. **Denúncia** — abra um perfil, clique em *Denunciar*, escolha o motivo e envie.
+12. **Painel admin** (logado como Ana) — mostre o **dashboard com gráficos**
+    (KPIs, séries temporais, distribuições), a aba **Denúncias** com a denúncia
+    recém-criada e o **CRUD** de categorias/habilidades.
+13. **Swagger UI** — abra `http://localhost:3333/api-docs` para mostrar a
+    documentação interativa da API.
 
 ## 4. Diferencial técnico: o algoritmo de match
 
@@ -72,7 +84,9 @@ Mostre o arquivo `backend/src/modules/match/match.algorithm.ts` e explique:
 - **Organização modular** por funcionalidade.
 - **Boas práticas de segurança** (cite 3–4: hash de senha, JWT, Zod, Prisma contra SQL
   Injection).
-- **Melhorias futuras**: pagamentos reais, notificações push (Web Push), app nativo e geolocalização.
+- **Melhorias futuras**: pagamentos reais, notificações push (Web Push),
+  gravação de vídeo chamada (Jibri sobre a stack Jitsi já existente),
+  geolocalização e app nativo.
 
 ---
 
@@ -125,4 +139,6 @@ Mostre o arquivo `backend/src/modules/match/match.algorithm.ts` e explique:
 - [ ] Banco populado (`npm run seed`)
 - [ ] Internet ativa (fotos de perfil via *pravatar*)
 - [ ] Testar o login do Bruno e ver o score 100 no feed
+- [ ] **Stack Jitsi de pé** (`docker compose -f docker-compose.yml -f compose.jitsi.yml up -d`) e `127.0.0.1 jitsi.localhost` no arquivo `hosts` — necessário para o passo da vídeo chamada
+- [ ] Swagger UI acessível em `http://localhost:3333/api-docs`
 - [ ] Slides com os diagramas da [documentação](DOCUMENTACAO-TCC.md)

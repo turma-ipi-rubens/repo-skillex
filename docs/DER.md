@@ -10,7 +10,7 @@
 
 ## 1. Introdução
 
-Este documento apresenta o **Diagrama de Entidade-Relacionamento (DER)** do banco de dados do SkillEx, derivado diretamente do schema Prisma em uso no projeto. O DER foi gerado a partir do estado atual do banco e cobre as **17 entidades** do MVP.
+Este documento apresenta o **Diagrama de Entidade-Relacionamento (DER)** do banco de dados do SkillEx, derivado diretamente do schema Prisma em uso no projeto. O DER foi gerado a partir do estado atual do banco e cobre as **18 entidades** do MVP (a 18ª — `reports` — foi adicionada junto da feature de moderação por denúncias).
 
 ### Stack de persistência
 

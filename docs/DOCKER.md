@@ -8,6 +8,12 @@ Não exige Node.js instalado no host — tudo roda em containers.
 - **Docker Engine 20.10+** ou **Docker Desktop** ([download](https://www.docker.com/products/docker-desktop/))
 - **Docker Compose v2** (já incluso no Docker Desktop)
 
+> 💡 **No Windows / macOS:** o Docker Desktop precisa estar **aberto** antes
+> dos comandos abaixo. Se aparecer
+> `unable to get image ...: failed to connect to the docker API` ou
+> `Cannot connect to the Docker daemon`, abra o Docker Desktop e aguarde
+> o ícone na bandeja ficar verde.
+
 Verifique a instalação:
 
 ```bash
@@ -45,7 +51,7 @@ Use o script `deploy.sh` na raiz do repositório:
 ```
 
 O script cuida de tudo:
-- copia `.env.docker` para `.env` se ainda não existir (e gera um `JWT_SECRET` aleatório);
+- copia `.env.example` para `.env` se ainda não existir (e gera um `JWT_SECRET` aleatório);
 - faz `docker compose build` + `up -d`;
 - aguarda o backend ficar **healthy**;
 - imprime as URLs de acesso.
@@ -105,7 +111,7 @@ Por design o bootstrap é mínimo. Se você precisa, configure separadamente:
 
 ```bash
 # 1. Copie o template de variáveis de ambiente
-cp .env.docker .env
+cp .env.example .env
 
 # 2. (Opcional) Edite .env e defina um JWT_SECRET forte
 #    Em produção isto é obrigatório!
@@ -124,13 +130,16 @@ docker compose logs -f
 
 ## 3. Variáveis de ambiente
 
-As variáveis ficam em `.env` na raiz (criado a partir de `.env.docker`).
+As variáveis ficam em `.env` na raiz (criado a partir de `.env.example`).
 
 | Variável | Padrão | Descrição |
 |----------|--------|-----------|
 | `JWT_SECRET` | `skillex-docker-secret-CHANGE-ME` | **Mude obrigatoriamente em produção** |
 | `JWT_EXPIRES_IN` | `7d` | Tempo de vida do token |
 | `MAX_UPLOAD_SIZE_MB` | `5` | Limite de upload em MB |
+| `JITSI_DOMAIN` | `jitsi.localhost:8000` | Domínio externo da instância Jitsi (browser) |
+| `JITSI_APP_ID` | `skillex` | Identidade JWT (mesmo valor lido pelo backend e pelo prosody) |
+| `JITSI_APP_SECRET` | — | Segredo para assinar JWT do Jitsi (obrigatório p/ vídeo) |
 
 Para gerar um `JWT_SECRET` forte:
 
@@ -245,7 +254,73 @@ O frontend só inicia depois que o backend reporta `healthy` (`depends_on.condit
 
 ---
 
-## 9. Limpeza completa
+## 9. Vídeo chamada (Jitsi self-hosted)
+
+A vídeo chamada das trocas roda numa stack Jitsi **100% auto-hospedada** — nada da Jitsi.org é chamado em runtime. Para ativá-la, sobe-se o compose adicional `compose.jitsi.yml` junto do principal.
+
+> Todas as variáveis (app + Jitsi) ficam num **único `.env` na raiz** — é o arquivo que tanto o Docker Compose quanto o backend lêem. Não há `.env.jitsi` separado: o `JITSI_APP_SECRET` é lido da mesma variável pelo backend (assina o JWT) e pelo prosody (verifica o JWT), eliminando qualquer chance de divergência.
+
+### 9.1 Setup inicial (uma vez)
+
+1. **Adicione o hostname no `hosts` do sistema** (para o navegador resolver `jitsi.localhost`):
+   - Linux/macOS: `/etc/hosts`
+   - Windows: `C:\Windows\System32\drivers\etc\hosts`
+
+   ```
+   127.0.0.1 jitsi.localhost
+   ```
+
+2. **Gere os 4 segredos** (`JWT_SECRET`, `JITSI_APP_SECRET`, `JITSI_JICOFO_COMPONENT_SECRET`, `JITSI_JICOFO_AUTH_PASSWORD`, `JITSI_JVB_AUTH_PASSWORD`):
+
+   ```bash
+   openssl rand -hex 32
+   ```
+
+3. **Preencha `.env`** (cópia de `.env.example` se ainda não existir) substituindo cada `CHANGE-ME-*` pelos valores gerados.
+
+### 9.2 Subir tudo
+
+```bash
+docker compose -f docker-compose.yml -f compose.jitsi.yml up --build
+```
+
+O Compose carrega o `.env` da raiz automaticamente — sem precisar de `--env-file`.
+
+Aguarde os logs de `prosody`, `jicofo` e `jvb` reportarem prontidão.
+
+| Serviço | Porta exposta | Função |
+|---------|---------------|--------|
+| `jitsi-web` | `8000` (HTTP) | UI + `external_api.js` |
+| `prosody` | — (interno) | XMPP + auth JWT |
+| `jicofo` | — (interno) | Focus de conferência |
+| `jvb` | `10000/udp`, `4443` | Vídeo bridge (RTP) |
+
+### 9.3 Verificação rápida
+
+- Abra `http://jitsi.localhost:8000` — deve aparecer a tela do Jitsi (sem JWT, prosody bloqueia entrar em sala — é o comportamento esperado).
+- Logue como `ana@skillex.com` e `bruno@skillex.com` (em dois browsers), crie e aceite uma troca, depois clique **Iniciar vídeo chamada** em `/requests/:id`.
+- No DevTools (aba Network), confirme que **nenhum** request vai a `meet.jit.si`, `jitsi.org` ou `8x8.vc`. Tudo deve passar por `jitsi.localhost`.
+
+### 9.4 Notas de produção
+
+- **HTTPS é obrigatório** (browsers exigem secure context para câmera/mic em hostnames que não sejam `localhost`). Use Caddy ou nginx no host:
+  - `app.<dominio>` → frontend
+  - `jitsi.<dominio>` → `jitsi-web:80`
+- **Abrir UDP 10000** no firewall (Mídia RTP do JVB). Sem isso, fallback para TCP/4443 degrada qualidade.
+- `JITSI_APP_SECRET` deve vir de secret manager — nunca commitado.
+- `DOCKER_HOST_ADDRESS` precisa ser o **IP público** da máquina (ou IP da LAN se for uso interno).
+
+### 9.5 Derrubar só o Jitsi
+
+```bash
+docker compose -f docker-compose.yml -f compose.jitsi.yml down
+# ou, mantendo o sistema principal de pé:
+docker compose -f compose.jitsi.yml down
+```
+
+---
+
+## 10. Limpeza completa
 
 Quando quiser **zerar tudo** (containers, imagens e dados):
 

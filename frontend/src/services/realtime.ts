@@ -6,13 +6,15 @@ export type RealtimeEvent =
   | 'notification:new'
   | 'chat:message'
   | 'request:updated'
-  | 'request:joined';
+  | 'request:joined'
+  | 'request:call-started';
 
 const EVENTS: RealtimeEvent[] = [
   'notification:new',
   'chat:message',
   'request:updated',
   'request:joined',
+  'request:call-started',
 ];
 
 let socket: Socket | null = null;

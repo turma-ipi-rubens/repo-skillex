@@ -24,16 +24,16 @@ export function createLimiter(opts: LimiterOptions): RateLimitRequestHandler {
   });
 }
 
-/** Limite global da API: 300 requisições por minuto por IP. */
+/** Limite global da API (configurável via env). */
 export const globalLimiter = createLimiter({
-  windowMs: 60_000,
-  max: 300,
+  windowMs: env.rateLimitGlobalWindowMs,
+  max: env.rateLimitGlobalMax,
   enabled: env.nodeEnv !== 'test',
 });
 
 /** Limite estrito para rotas sensíveis de autenticação (anti força bruta). */
 export const authLimiter = createLimiter({
-  windowMs: 15 * 60_000,
-  max: 10,
+  windowMs: env.rateLimitAuthWindowMs,
+  max: env.rateLimitAuthMax,
   enabled: env.nodeEnv !== 'test',
 });

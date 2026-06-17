@@ -4,7 +4,7 @@
 > Rede social colaborativa onde pessoas **ensinam e aprendem habilidades entre si** (Skill Exchange), com sistema de match inteligente e moeda interna.
 
 ![status](https://img.shields.io/badge/status-MVP%20funcional-orange)
-![stack](https://img.shields.io/badge/stack-React%20%7C%20Node%20%7C%20TypeScript%20%7C%20Express%20%7C%20Prisma%20%7C%20Socket.IO%20%7C%20SQLite-blue)
+![stack](https://img.shields.io/badge/stack-React%20%7C%20Node%20%7C%20TypeScript%20%7C%20Express%20%7C%20Prisma%20%7C%20Socket.IO%20%7C%20Jitsi%20%7C%20SQLite-blue)
 
 ---
 
@@ -31,11 +31,15 @@ habilidade compatível pode pagar a aula com a **moeda interna (SkillCoins)**.
 
 ## 🗂️ Estrutura do repositório
 
-| Pasta | Descrição |
-|-------|-----------|
-| `backend/`  | API REST (Express + Prisma + SQLite) |
-| `frontend/` | Aplicação SPA (React + Vite + TypeScript + SCSS) |
+| Pasta / arquivo | Descrição |
+|-----------------|-----------|
+| `backend/`  | API REST (Express + Prisma + SQLite + socket.io + Swagger UI) |
+| `frontend/` | Aplicação SPA (React + Vite + TypeScript + SCSS + PWA) |
+| `e2e/`      | Testes end-to-end (Playwright) e *tour* guiado para a banca |
+| `scripts/`  | Utilitários (`deploy.sh` de Docker, gerador de ícones PWA) |
 | `docs/`     | Documentação técnica e acadêmica do TCC |
+| `docker-compose.yml` · `compose.jitsi.yml` | Stack principal + stack opcional Jitsi self-hosted (vídeo chamada) |
+| `.env.example` | Template **único** de variáveis lido pelo backend e pelo Docker Compose |
 
 ## 🚀 Como rodar (resumo)
 
@@ -67,11 +71,15 @@ npm run dev          # App em http://localhost:5173
 - Carteira e moeda interna (SkillCoins) com histórico
 - Avaliações e reputação
 - Notificações, favoritos e chat **em tempo real** (WebSocket via socket.io)
-- Painel administrativo (gestão de usuários, categorias e habilidades)
+- **Vídeo chamada** integrada nas trocas aceitas (Jitsi Meet self-hosted, JWT)
+- **Sistema de denúncias** (assédio, golpe, perfil falso, spam) com moderação no painel admin
+- Painel administrativo completo: dashboard com gráficos, gestão de usuários, categorias, habilidades e denúncias
 - Exclusão de conta com anonimização de dados (LGPD)
-- Segurança reforçada (helmet + rate limiting por IP)
+- Segurança reforçada (helmet + rate limiting por IP configurável via env)
+- **Documentação interativa da API** com Swagger UI em `/api-docs`
 - **PWA instalável** no celular e no desktop (vite-plugin-pwa)
 - Tema claro/escuro · design mobile-first
+- **Cobertura de testes 100%** (Vitest unitário + integração + Playwright E2E + *tour* narrado)
 
 ## 👥 Integrantes do Grupo
 

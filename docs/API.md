@@ -3,6 +3,9 @@
 - **Base URL:** `http://localhost:3333/api`
 - **Autenticação:** `Authorization: Bearer <token>` (JWT obtido no login/cadastro)
 - **Formato:** JSON
+- **Documentação interativa:** Swagger UI em `http://localhost:3333/api-docs`
+  (e JSON cru em `/api-docs.json`) — use o botão **Authorize** para colar o token
+  JWT e testar rotas autenticadas direto pelo navegador.
 
 ---
 
@@ -137,6 +140,17 @@ são removidos, e a conta fica desativada.
 | POST | `/requests/:id/complete` | Conclui (qualquer participante) |
 | GET | `/requests/:id/messages` | Lista mensagens do chat |
 | POST | `/requests/:id/messages` | Envia mensagem |
+| GET | `/requests/:id/video-token` | Emite JWT da sala de vídeo (Jitsi) |
+
+**Vídeo chamada (`GET /requests/:id/video-token`):** disponível apenas para
+participantes de uma solicitação `ACCEPTED`. Retorna `{ "token", "domain",
+"room", "displayName", "email", "avatarUrl" }`, onde `token` é um JWT HS256
+(2h de validade) que o frontend passa ao componente `<JitsiMeeting/>` para
+entrar na sala `troca-<requestId>`. Erros: `503` se o servidor Jitsi não
+estiver configurado (`JITSI_APP_SECRET` ausente); `403` se o usuário não
+participa da solicitação; `409` se o status não for `ACCEPTED`. Ao emitir o
+token, o servidor envia o evento `request:call-started` na sala da solicitação
+para alertar o outro participante em tempo real.
 
 ## Carteira (`/wallet`)
 
@@ -159,6 +173,55 @@ são removidos, e a conta fica desativada.
 | GET | `/stats/trends` | Habilidades em alta |
 | GET | `/stats/ranking` | Ranking de reputação dos usuários |
 | GET | `/stats/overview` | Estatísticas gerais (somente admin) |
+| GET | `/stats/timeseries?days=` | Séries temporais (cadastros, solicitações, mensagens, transações) — `days` entre 7 e 180, default 30 (admin) |
+| GET | `/stats/distributions` | Distribuições agregadas (status de solicitação, tipo de transação, modalidade…) (admin) |
+| GET | `/stats/top?limit=` | Top-N (skills mais ensinadas/desejadas, top usuários, etc.) — `limit` entre 3 e 25 (admin) |
+| GET | `/stats/wallet` | Métricas agregadas da carteira (saldo total, locked, fluxo) (admin) |
+| GET | `/stats/health` | Status operacional consolidado (admin) |
+| GET | `/stats/geo` | Distribuição geográfica de usuários por estado/cidade (admin) |
+
+> As rotas marcadas como **(admin)** exigem `Authorization: Bearer <token>` de
+> um usuário com `role = "ADMIN"`. Os endpoints alimentam o **dashboard** do
+> painel administrativo (gráficos em SVG renderizados no frontend).
+
+## Denúncias (`/reports`)
+
+| Método | Rota | Auth | Descrição |
+|--------|------|:----:|-----------|
+| POST | `/reports` | ✓ | Cria uma denúncia (sobre usuário e/ou solicitação) |
+| GET | `/reports/mine` | ✓ | Lista as denúncias que o usuário enviou |
+| GET | `/reports/admin?status=&page=&limit=` | admin | Fila de denúncias para moderação |
+| PATCH | `/reports/admin/:id` | admin | Move o status / adiciona nota interna |
+
+**Criar denúncia (`POST /reports`)** — body:
+
+```json
+{
+  "targetId": "...",        // opcional — usuário denunciado
+  "requestId": "...",       // opcional — solicitação relacionada (precisa ser participante)
+  "type": "HARASSMENT",     // INAPPROPRIATE_CONTENT | HARASSMENT | SCAM | FAKE_PROFILE | SPAM | OTHER
+  "description": "..."      // mínimo 10, máximo 1000 caracteres
+}
+```
+
+- Pelo menos um entre `targetId` e `requestId` é obrigatório.
+- `400` ao tentar denunciar a si mesmo.
+- `404` se `targetId` ou `requestId` não existirem.
+- `403` ao denunciar uma solicitação da qual o usuário não participa.
+- `409` se já houver denúncia `PENDING`/`UNDER_REVIEW` do mesmo autor para o mesmo alvo.
+
+**Resolver denúncia (`PATCH /reports/admin/:id`)** — body:
+
+```json
+{
+  "status": "RESOLVED",     // UNDER_REVIEW | RESOLVED | DISMISSED
+  "adminNote": "..."        // opcional, até 500 caracteres
+}
+```
+
+Ao mover para `RESOLVED` ou `DISMISSED`, o sistema registra `resolvedById` +
+`resolvedAt`, cria uma notificação `REPORT_RESOLVED` para o autor da denúncia
+e emite `notification:new` em tempo real.
 
 ## Administração (`/admin`)
 
@@ -267,10 +330,11 @@ const socket = io('http://localhost:3333', { auth: { token } });
 
 | Evento | Payload | Quando |
 |--------|---------|--------|
-| `notification:new` | `{ "link" }` | Nova notificação (solicitação, mensagem, avaliação) |
+| `notification:new` | `{ "link" }` | Nova notificação (solicitação, mensagem, avaliação, denúncia resolvida) |
 | `request:updated` | `{ "requestId", "status" }` | Mudança de status de uma solicitação |
 | `chat:message` | `{ "id", "content", "createdAt", "sender": { "id", "name", "avatarUrl" } }` | Nova mensagem na room da solicitação |
 | `request:joined` | `"<requestId>"` | Confirmação de entrada na room do chat |
+| `request:call-started` | `{ "requestId", "startedBy": { "id", "name", "avatarUrl" } }` | Um participante iniciou uma vídeo chamada (emitido na sala `request:<id>`) |
 
 **Eventos cliente → servidor:**
 

@@ -110,11 +110,15 @@ interna de moedas.
 | Validação | **Zod** | Validação e sanitização de dados de entrada |
 | Upload | **Multer** | Envio de foto de perfil |
 | Tempo real | **socket.io** | Notificações, chat e status ao vivo sobre o mesmo servidor HTTP |
+| Vídeo chamada | **Jitsi Meet (self-hosted)** + `JitsiMeetExternalAPI` | Sala embutida em iframe autenticada por JWT assinado pelo backend (controla `noSSL` em dev local) |
+| Documentação da API | **swagger-jsdoc + swagger-ui-express** | OpenAPI 3.0 interativo em `/api-docs` |
 | Segurança HTTP | **helmet + express-rate-limit** | *Headers* de segurança e limitação de requisições por IP |
 | Build front-end | **Vite** | *Bundler* rápido com *hot reload* |
 | PWA | **vite-plugin-pwa** | *Manifest* e *service worker* — aplicação instalável |
 | Estilo | **SCSS** | CSS organizado com variáveis e aninhamento |
 | Front-end | **React 18 + TypeScript (SPA)** | Componentização declarativa com React Router e Context API |
+| Containerização | **Docker + Docker Compose** | Stack reprodutível (backend + nginx + Jitsi opcional) com `deploy.sh` |
+| Testes | **Vitest + Supertest + Playwright** | Unitário, integração HTTP/socket e E2E de ponta a ponta |
 
 ### Por que estas escolhas?
 
@@ -172,8 +176,13 @@ flowchart LR
 - **Prisma**: acesso ao banco de dados com segurança e tipagem.
 
 A organização é **modular por funcionalidade** (`auth`, `users`, `skills`, `feed`,
-`match`, `requests`, `wallet`, `reviews`, `notifications`, `stats`, `admin`), o que
-facilita a manutenção e a explicação de cada parte isoladamente.
+`match`, `requests`, `wallet`, `reviews`, `notifications`, `stats`, `admin`,
+`reports`, `video`), o que facilita a manutenção e a explicação de cada parte
+isoladamente.
+
+A API conta ainda com **documentação interativa OpenAPI 3.0** servida em
+`/api-docs` (Swagger UI), com botão *Authorize* para testar rotas autenticadas
+direto pelo navegador; o JSON cru fica em `/api-docs.json`.
 
 ### Camada de tempo real
 
@@ -220,6 +229,8 @@ erDiagram
     User ||--o{ SavedSkill : "salva interesse"
     User ||--o{ Match : "compatibilidade"
     User ||--o{ PasswordResetToken : "recupera senha"
+    User ||--o{ Report : "denuncia / é denunciado / resolve"
+    ExchangeRequest ||--o{ Report : "denúncia opcional"
 ```
 
 ### Descrição das principais entidades
@@ -243,6 +254,10 @@ erDiagram
 | `saved_skills` | Habilidades salvas como interesse (bookmark) |
 | `chat_messages` | Mensagens trocadas dentro de uma solicitação aceita |
 | `password_reset_tokens` | Tokens de recuperação de senha (hash SHA-256, expiração de 1h, uso único) |
+| `reports` | Denúncias de usuário e/ou solicitação (assédio, golpe, perfil falso, spam, conteúdo inapropriado) com fluxo de moderação pelo admin |
+
+> O detalhamento completo das **18 entidades** (campos, tipos, restrições, FKs,
+> índices únicos e regras de exclusão em cascata) está em [DER.md](DER.md).
 
 > **Nota técnica:** o SQLite (via Prisma) não suporta o tipo `enum`. Por isso, campos
 > com valores fixos (status, nível, modalidade) são `String` validados no *back-end*
@@ -325,12 +340,24 @@ flowchart TD
 3. **Feed** — pessoas compatíveis, ordenadas pela pontuação de match.
 4. **Busca** — filtros por habilidade, categoria, modalidade, cidade, nível etc.
 5. **Solicitação** — troca direta (habilidade por habilidade) ou aula paga com moedas.
-6. **Gestão** — aceitar, recusar, cancelar, conversar e concluir.
-7. **Avaliação** — nota e comentário ao concluir, alimentando a reputação.
-8. **Administração** — painel completo (restrito ao papel `ADMIN`) com visão geral de
-   estatísticas, **gestão de usuários** (busca e ativar/desativar contas),
-   **categorias** (CRUD) e **habilidades** (CRUD), com proteções de integridade
-   (ex.: não excluir categoria com habilidades nem habilidade em uso).
+6. **Gestão** — aceitar, recusar, cancelar, conversar (chat em tempo real) e concluir.
+7. **Vídeo chamada** — em solicitações `ACCEPTED`, qualquer participante abre uma
+   sala embutida (Jitsi self-hosted) com token JWT de 2h emitido pelo backend; o
+   outro lado recebe um evento `request:call-started` em tempo real.
+8. **Avaliação** — nota e comentário ao concluir, alimentando a reputação.
+9. **Denúncias** — qualquer usuário pode denunciar um perfil e/ou uma solicitação
+   (assédio, golpe, perfil falso, spam, conteúdo inapropriado). A denúncia entra
+   na fila do admin (`PENDING → UNDER_REVIEW → RESOLVED | DISMISSED`) e o autor
+   é notificado em tempo real quando o caso é encerrado.
+10. **Administração** — painel completo (restrito ao papel `ADMIN`) com:
+    - **Dashboard** com KPIs, séries temporais, distribuições e top-N (gráficos
+      próprios — barras, linhas, donuts e *sparklines* renderizados em SVG);
+    - **Gestão de usuários** (busca, ativar/desativar contas);
+    - **Categorias** e **habilidades** (CRUD) com proteções de integridade
+      (não exclui categoria com habilidades nem habilidade em uso);
+    - **Denúncias** (mover entre status, nota interna, notificação automática);
+    - **Sistema** — *health check* e métricas operacionais;
+    - Exportação CSV / impressão de relatórios para uso fora do app.
 
 ## 11. Sistema de moedas internas (SkillCoins)
 
@@ -418,32 +445,47 @@ Ao excluir a conta:
 SkillEx/
 ├── backend/
 │   ├── prisma/
-│   │   ├── schema.prisma        # modelagem do banco
+│   │   ├── schema.prisma        # modelagem do banco (18 entidades)
 │   │   ├── migrations/          # histórico de migrations
 │   │   └── seed.ts              # dados fictícios
 │   ├── src/
-│   │   ├── config/              # env, prisma client
+│   │   ├── config/              # env, prisma client, swagger (OpenAPI)
 │   │   ├── middlewares/         # auth, erros, upload, rate limit
 │   │   ├── modules/             # auth, users, skills, feed, match, requests,
-│   │   │                        # wallet, reviews, notifications, stats, admin
+│   │   │                        # wallet, reviews, notifications, stats
+│   │   │                        # (+ analytics avançada), admin, reports, video
 │   │   ├── realtime/            # servidor socket.io e fachada de emissão
 │   │   ├── routes/              # agregador de rotas
 │   │   ├── utils/               # erros, jwt, senha, slug, constantes
 │   │   ├── app.ts · server.ts
+│   ├── tests/                   # unitários, integração, helpers e setup do banco
+│   ├── Dockerfile               # imagem node:20-slim multi-stage
 │   └── uploads/                 # fotos de perfil
 ├── frontend/
 │   ├── src/
-│   │   ├── components/          # AppLayout, guards, ScrollToTop, UserCard, ui/
+│   │   ├── components/          # AppLayout, guards, ScrollToTop, UserCard,
+│   │   │                        # VideoCall (Jitsi), ui/ (Charts, Combobox,
+│   │   │                        # AvatarCropper, ReportModal, …)
 │   │   ├── contexts/            # AuthContext, ToastContext
-│   │   ├── hooks/               # useRealtime, useRequestRoom, useTheme
-│   │   ├── pages/               # telas (feed, busca, perfil, carteira…)
+│   │   ├── hooks/               # useRealtime, useTheme, useBrazilLocations
+│   │   ├── pages/               # telas (feed, busca, perfil, carteira,
+│   │   │                        # admin, ranking, tendências, landing,
+│   │   │                        # termos, privacidade, 404…)
 │   │   ├── services/            # api, realtime
 │   │   ├── styles/              # main.scss + partials (components/, pages/)
-│   │   ├── utils/               # format, files
+│   │   ├── utils/               # format, files, exports (CSV/print),
+│   │   │                        # password, countries, languages
 │   │   ├── App.tsx              # BrowserRouter + providers + rotas
 │   │   └── main.tsx             # createRoot, shim hash→path, <App/>
+│   ├── tests/                   # unitários + componentes (Vitest + RTL)
+│   ├── Dockerfile · nginx.conf  # build estática servida por nginx
 │   ├── public/icons/            # ícones do PWA
 │   └── index.html
+├── e2e/                         # Playwright (specs, tour guiado, snapshots)
+├── scripts/                     # deploy.sh, generate-pwa-icons.cjs
+├── docker-compose.yml           # backend + frontend (nginx)
+├── compose.jitsi.yml            # stack Jitsi self-hosted (opcional)
+├── .env.example                 # template ÚNICO de env (backend + Compose)
 └── docs/                        # esta documentação
 ```
 
@@ -451,14 +493,15 @@ SkillEx/
 
 | Tela | Descrição |
 |------|-----------|
-| **Login / Cadastro** | Autenticação com identidade visual laranja |
+| **Landing** | Tela pública de apresentação com chamadas para login/cadastro |
+| **Login / Cadastro** | Autenticação com identidade visual laranja (IBGE para estado/cidade, crop de avatar e medidor de força de senha) |
 | **Onboarding** | Assistente em 3 etapas (perfil → ensina → aprende) |
 | **Feed** | Cards de usuários com anel de pontuação e selo de match |
-| **Busca** | Campo de busca, chips de categoria e filtros avançados |
+| **Busca** | Campo de busca, chips de categoria e filtros avançados (refletidos na URL) |
 | **Perfil** | Foto, estatísticas, compatibilidade, habilidades e avaliações |
 | **Editar perfil** | Dados básicos, complementares e upload de foto |
 | **Habilidades** | Gerenciar o que ensina/aprende, salvar interesses e ver sugestões |
-| **Solicitações** | Lista (recebidas/enviadas) e detalhe com histórico e chat |
+| **Solicitações** | Lista (recebidas/enviadas) e detalhe com histórico, chat em tempo real e **botão Iniciar vídeo chamada** (Jitsi) |
 | **Carteira** | Saldo, recarga e histórico de transações |
 | **Favoritos** | Usuários salvos para revisitar |
 | **Notificações** | Central de avisos internos |
@@ -466,7 +509,9 @@ SkillEx/
 | **Ranking** | Reputação dos usuários (avaliações + trocas concluídas) |
 | **Configurações** | Tema, alterar senha, sair e zona de perigo (excluir conta) |
 | **Recuperação de senha** | "Esqueci minha senha" e redefinição via link com token |
-| **Painel admin** | Visão geral, gestão de usuários, categorias e habilidades (somente administradores) |
+| **Termos / Privacidade** | Páginas legais públicas (LGPD) acessíveis sem login |
+| **Painel admin** | Dashboard com gráficos, gestão de usuários, categorias, habilidades, **denúncias** e métricas de sistema (somente administradores) |
+| **404** | Tela amigável para rotas não encontradas |
 
 A interface é **mobile-first**, com **navegação inferior**, **tema claro/escuro**,
 estados visuais de **carregamento, vazio e erro**, e microinterações suaves.
@@ -484,9 +529,10 @@ cache** — vão sempre à rede, garantindo dados atualizados.
 - **Notificações push** (Web Push) e **envio real de e-mails** — a recuperação de
   senha hoje é demonstrada sem servidor SMTP;
 - **Geolocalização** para encontros presenciais próximos;
-- **Agenda integrada** com confirmação de horários;
-- **Sistema de denúncias** entre usuários (a moderação de contas já é possível pelo
-  painel administrativo);
+- **Agenda integrada** com confirmação de horários, possivelmente com gravação das
+  vídeo chamadas (Jibri sobre a stack Jitsi já existente);
+- **Migração de SQLite para PostgreSQL** em produção (basta trocar o `datasource`
+  do Prisma — campos `String` validados por Zod migram para `enum` nativo);
 - **Aplicativo móvel nativo** (React Native/Flutter) consumindo a mesma API.
 
 ---
