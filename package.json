@@ -9,7 +9,8 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:demo": "playwright test --headed e2e/specs/demo-walkthrough.e2e.ts",
     "test:e2e:responsive": "playwright test e2e/specs/responsive.e2e.ts",
-    "test:e2e:report": "playwright show-report e2e/report"
+    "test:e2e:report": "playwright show-report e2e/report",
+    "tour": "playwright test --config=playwright.tour.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0"
