@@ -5,25 +5,32 @@ const backendDir = path.resolve(__dirname, 'backend');
 const frontendDir = path.resolve(__dirname, 'frontend');
 
 /**
- * Sobe automaticamente o backend (com banco de teste semeado) e o frontend,
- * e roda os fluxos E2E contra a SPA real.
+ * Configuração dedicada ao TOUR GUIADO (não é teste — é uma demo visual).
+ *
+ *   npm run tour                     # tour padrão (slowMo 450ms)
+ *   SLOWMO=700 npm run tour          # mais devagar
+ *   $env:SLOWMO=200; npm run tour    # mais rápido (Windows PowerShell)
+ *
+ * Difere do playwright.config.ts em três pontos:
+ *   - Roda apenas arquivos em ./e2e/tour
+ *   - Sempre headed, com slowMo alto
+ *   - Timeout esticado (o tour pode levar 3–5 min)
  */
 export default defineConfig({
-  testDir: './e2e/specs',
-  testMatch: '**/*.e2e.ts',
-  timeout: 30_000,
+  testDir: './e2e/tour',
+  testMatch: '**/*.ts',
+  timeout: 10 * 60_000, // 10 min — passos longos e overlays narrativos
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'e2e/report' }]],
+  retries: 0,
+  reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5173',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
-    // SLOWMO=300 npm run test:e2e:headed → cada ação espera 300ms (útil em demos)
+    headless: false,
+    viewport: { width: 1440, height: 900 },
     launchOptions: {
-      slowMo: process.env.SLOWMO ? Number(process.env.SLOWMO) : 0,
+      slowMo: process.env.SLOWMO ? Number(process.env.SLOWMO) : 450,
     },
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

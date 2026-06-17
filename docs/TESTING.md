@@ -51,6 +51,90 @@ npm run test:e2e:report   # abre o relatório HTML
 ```
 > O Playwright sobe sozinho o backend (banco `e2e.db` resetado + `seed`) e o frontend (Vite) via `webServer`. Conta de teste: `ana@skillex.com` / `senha123` (admin).
 
+#### Modo *headed* (navegador visível) e modo demo
+
+Para acompanhar a execução com o navegador aberto — útil para depuração e para a **apresentação da banca**:
+
+```bash
+npm run test:e2e:headed   # todos os specs com o Chromium visível
+npm run test:e2e:demo     # só o walkthrough do fluxo principal
+npm run test:e2e:ui       # interface interativa do Playwright (passo a passo)
+```
+
+Para diminuir o ritmo das ações (cada interação espera `SLOWMO` milissegundos), defina a variável de ambiente antes do comando:
+
+```bash
+# Linux / macOS
+SLOWMO=300 npm run test:e2e:headed
+
+# Windows PowerShell
+$env:SLOWMO="300"; npm run test:e2e:demo
+```
+
+| Script | Comportamento | Quando usar |
+|--------|---------------|-------------|
+| `test:e2e` | Headless, todos os specs | CI e checagem rápida local |
+| `test:e2e:headed` | Headed, todos os specs | Depurar um spec quebrando |
+| `test:e2e:demo` | Headed, só `demo-walkthrough.e2e.ts` | Apresentação da banca |
+| `test:e2e:responsive` | Headless, só `responsive.e2e.ts` (mobile/tablet/desktop) | Validar a SPA nos 3 viewports |
+| `test:e2e:ui` | Modo *time-travel* do Playwright | Investigar passo a passo |
+| `test:e2e:report` | Abre o HTML report da última execução | Ver traces, screenshots e logs |
+| `tour` | Tour guiado headed com narração visual | Demo da banca / vídeo de divulgação |
+
+O spec `e2e/specs/demo-walkthrough.e2e.ts` é um **roteiro narrado** dividido em `test.step` (login → feed com match → perfil do Bruno → busca → carteira → logout) — cada passo aparece nomeado no relatório e na barra superior do Chromium quando rodando com `--headed`.
+
+#### Responsividade (mobile / tablet / desktop)
+
+O spec `e2e/specs/responsive.e2e.ts` roda **o mesmo conjunto de verificações em 3 viewports** representativos, validando que o único breakpoint estrutural da SPA (`@media (min-width: 1024px)` em `frontend/src/styles/components/_shell.scss`) reagrupa o layout corretamente.
+
+| Perfil | Viewport | Dispositivo | Layout esperado |
+|--------|----------|-------------|-----------------|
+| `mobile` | 412 × 915 | Pixel 7 (Android, `isMobile` + `hasTouch`) | Barra inferior fixa |
+| `tablet` | 820 × 1180 | iPad-like | Barra inferior fixa |
+| `desktop` | 1440 × 900 | Notebook 14" / monitor padrão | Sidebar lateral |
+
+O que cada teste verifica em cada perfil:
+
+1. **Shell renderiza** — header, `bottom-nav` e os 5 itens (`feed`, `search`, `requests`, `wallet`, `profile`) visíveis.
+2. **Breakpoint correto** — mede o `boundingBox` da `.bottom-nav` e valida a forma:
+   - **Sidebar (desktop):** `x < 50`, `width < 300`, altura > 40% da viewport.
+   - **Bottom-bar (mobile/tablet):** `width > 70%` da viewport, altura `< 120px`, borda inferior nos últimos 15% da tela.
+3. **Navegação clicável** — clica em `Carteira` e confirma rota `/wallet` + heading visível.
+4. **Login funcional** — campos `email`, `password` e botão de submit visíveis (importante porque a tela de login tem layout próprio fora do shell).
+
+Cada teste tira um **screenshot** em `e2e/snapshots/{perfil}-{tela}.png` para revisão visual manual (9 arquivos: feed/wallet/login × mobile/tablet/desktop). A pasta é ignorada pelo git — gere localmente sempre que quiser comparar.
+
+#### Tour guiado (`npm run tour`)
+
+Diferente dos testes — o **tour** (`e2e/tour/guided-tour.ts`) é uma **demo automatizada** pensada para ser ASSISTIDA, não para validar nada. Roda em janela headed, com `slowMo: 450`, e injeta **legendas overlay** sobre o app explicando cada feature enquanto o cursor navega.
+
+```bash
+npm run tour                     # ritmo padrão (~3–4 min)
+SLOWMO=700 npm run tour          # bem devagar (apresentação ao vivo)
+$env:SLOWMO=200; npm run tour    # rápido (gravação de vídeo)
+```
+
+**Roteiro (16 paradas):**
+
+1. 👋 Landing pública
+2. 🔐 Login (conta seed `ana@skillex.com`)
+3. 🏠 Feed de matches (destaca o card do Bruno, score 100)
+4. 👤 Perfil do match
+5. 🔍 Busca (com digitação simulada)
+6. 📈 Tendências
+7. 🏆 Ranking
+8. 🎯 Habilidades
+9. ❤️ Favoritos
+10. 🔄 Trocas
+11. 💰 Carteira (destaca o saldo)
+12. 🔔 Notificações
+13. ⚙️ Configurações (demonstra o toggle de tema claro ↔ escuro)
+14. 🪪 Perfil próprio
+15. 🛡️ Painel administrativo
+16. 👋 Logout + tela "Tour finalizado"
+
+Configuração isolada em `playwright.tour.config.ts` (não interfere no `test:e2e`). Cada parada usa `trySection()` — se um elemento opcional não existir, o tour pula e continua, **nunca quebra** uma demo ao vivo. Os overlays são injetados via `page.evaluate` com `z-index: 2147483647`, ficando sobre toda a UI da SPA.
+
 ## CI
 
 `.github/workflows/ci.yml` roda os três conjuntos em paralelo a cada push/PR:
@@ -77,5 +161,7 @@ frontend/
     components/            # guards, AppLayout, ScrollToTop, UserCard, ui
 e2e/
   support/auth.ts          # helper de login
-  specs/                   # auth, navigation, wallet, password-reset, settings, admin, realtime-chat (.e2e.ts)
+  snapshots/               # screenshots gerados pelo spec responsive (ignorado no git)
+  specs/                   # auth, navigation, wallet, password-reset, settings, admin, realtime-chat, demo-walkthrough, responsive (.e2e.ts)
+  tour/guided-tour.ts      # demo guiada com narração visual (npm run tour)
 ```
