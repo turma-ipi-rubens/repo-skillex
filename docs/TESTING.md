@@ -51,6 +51,58 @@ npm run test:e2e:report   # abre o relatório HTML
 ```
 > O Playwright sobe sozinho o backend (banco `e2e.db` resetado + `seed`) e o frontend (Vite) via `webServer`. Conta de teste: `ana@skillex.com` / `senha123` (admin).
 
+#### Modo *headed* (navegador visível) e modo demo
+
+Para acompanhar a execução com o navegador aberto — útil para depuração e para a **apresentação da banca**:
+
+```bash
+npm run test:e2e:headed   # todos os specs com o Chromium visível
+npm run test:e2e:demo     # só o walkthrough do fluxo principal
+npm run test:e2e:ui       # interface interativa do Playwright (passo a passo)
+```
+
+Para diminuir o ritmo das ações (cada interação espera `SLOWMO` milissegundos), defina a variável de ambiente antes do comando:
+
+```bash
+# Linux / macOS
+SLOWMO=300 npm run test:e2e:headed
+
+# Windows PowerShell
+$env:SLOWMO="300"; npm run test:e2e:demo
+```
+
+| Script | Comportamento | Quando usar |
+|--------|---------------|-------------|
+| `test:e2e` | Headless, todos os specs | CI e checagem rápida local |
+| `test:e2e:headed` | Headed, todos os specs | Depurar um spec quebrando |
+| `test:e2e:demo` | Headed, só `demo-walkthrough.e2e.ts` | Apresentação da banca |
+| `test:e2e:responsive` | Headless, só `responsive.e2e.ts` (mobile/tablet/desktop) | Validar a SPA nos 3 viewports |
+| `test:e2e:ui` | Modo *time-travel* do Playwright | Investigar passo a passo |
+| `test:e2e:report` | Abre o HTML report da última execução | Ver traces, screenshots e logs |
+
+O spec `e2e/specs/demo-walkthrough.e2e.ts` é um **roteiro narrado** dividido em `test.step` (login → feed com match → perfil do Bruno → busca → carteira → logout) — cada passo aparece nomeado no relatório e na barra superior do Chromium quando rodando com `--headed`.
+
+#### Responsividade (mobile / tablet / desktop)
+
+O spec `e2e/specs/responsive.e2e.ts` roda **o mesmo conjunto de verificações em 3 viewports** representativos, validando que o único breakpoint estrutural da SPA (`@media (min-width: 1024px)` em `frontend/src/styles/components/_shell.scss`) reagrupa o layout corretamente.
+
+| Perfil | Viewport | Dispositivo | Layout esperado |
+|--------|----------|-------------|-----------------|
+| `mobile` | 412 × 915 | Pixel 7 (Android, `isMobile` + `hasTouch`) | Barra inferior fixa |
+| `tablet` | 820 × 1180 | iPad-like | Barra inferior fixa |
+| `desktop` | 1440 × 900 | Notebook 14" / monitor padrão | Sidebar lateral |
+
+O que cada teste verifica em cada perfil:
+
+1. **Shell renderiza** — header, `bottom-nav` e os 5 itens (`feed`, `search`, `requests`, `wallet`, `profile`) visíveis.
+2. **Breakpoint correto** — mede o `boundingBox` da `.bottom-nav` e valida a forma:
+   - **Sidebar (desktop):** `x < 50`, `width < 300`, altura > 40% da viewport.
+   - **Bottom-bar (mobile/tablet):** `width > 70%` da viewport, altura `< 120px`, borda inferior nos últimos 15% da tela.
+3. **Navegação clicável** — clica em `Carteira` e confirma rota `/wallet` + heading visível.
+4. **Login funcional** — campos `email`, `password` e botão de submit visíveis (importante porque a tela de login tem layout próprio fora do shell).
+
+Cada teste tira um **screenshot** em `e2e/snapshots/{perfil}-{tela}.png` para revisão visual manual (9 arquivos: feed/wallet/login × mobile/tablet/desktop). A pasta é ignorada pelo git — gere localmente sempre que quiser comparar.
+
 ## CI
 
 `.github/workflows/ci.yml` roda os três conjuntos em paralelo a cada push/PR:
@@ -77,5 +129,6 @@ frontend/
     components/            # guards, AppLayout, ScrollToTop, UserCard, ui
 e2e/
   support/auth.ts          # helper de login
-  specs/                   # auth, navigation, wallet, password-reset, settings, admin, realtime-chat (.e2e.ts)
+  snapshots/               # screenshots gerados pelo spec responsive (ignorado no git)
+  specs/                   # auth, navigation, wallet, password-reset, settings, admin, realtime-chat, demo-walkthrough, responsive (.e2e.ts)
 ```
