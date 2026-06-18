@@ -306,6 +306,8 @@ Aguarde os logs de `prosody`, `jicofo` e `jvb` reportarem prontidão.
 - **HTTPS é obrigatório** (browsers exigem secure context para câmera/mic em hostnames que não sejam `localhost`). Use Caddy ou nginx no host:
   - `app.<dominio>` → frontend
   - `jitsi.<dominio>` → `jitsi-web:80`
+- **BOSH relativo**: deixamos `BOSH_RELATIVE: 1` no `compose.jitsi.yml`, o que faz o `config.js` do Jitsi gerar `config.bosh = '/http-bind'` (URL relativa). Sem isso, a imagem `jitsi/web:stable-9779` concatena `https://${PUBLIC_URL}` na URL do BOSH; em dev (PUBLIC_URL `http://...`), o resultado é o lixo `https://http://jitsi.localhost:8000/http-bind` e o cliente nunca conecta no XMPP — a sala fica eternamente em "Connecting…". A URL relativa funciona igualmente bem sob HTTPS de produção, então deixe `BOSH_RELATIVE: 1` sempre.
+- **Em produção, reative o WebSocket** definindo `ENABLE_XMPP_WEBSOCKET: 1` em `compose.jitsi.yml`. Em dev local sobre HTTP, deixamos em `0` para usar BOSH (HTTP long-polling), porque o WS sofre do mesmo bug do BOSH descrito acima (vira `wss://http://...` inválido) e não há flag equivalente a `BOSH_RELATIVE` para o WebSocket. Com HTTPS real, a URL `wss://app.dominio/xmpp-websocket` fica correta e o WS dá menor latência.
 - **Abrir UDP 10000** no firewall (Mídia RTP do JVB). Sem isso, fallback para TCP/4443 degrada qualidade.
 - `JITSI_APP_SECRET` deve vir de secret manager — nunca commitado.
 - `DOCKER_HOST_ADDRESS` precisa ser o **IP público** da máquina (ou IP da LAN se for uso interno).

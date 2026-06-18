@@ -1,6 +1,7 @@
 /** Tela de login. */
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Icon } from '../components/ui/Icon';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { ApiError } from '../services/api';
@@ -10,6 +11,7 @@ export function Login() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -42,7 +44,23 @@ export function Login() {
         </div>
         <div className="field">
           <label className="field__label">Senha</label>
-          <input className="input" name="password" type="password" placeholder="••••••••" required />
+          <div className="password-input">
+            <input
+              className="input"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="••••••••"
+              required
+            />
+            <button
+              type="button"
+              className="password-input__toggle"
+              onClick={() => setShowPassword((s) => !s)}
+              aria-label={showPassword ? 'Esconder senha' : 'Mostrar senha'}
+            >
+              <Icon name={showPassword ? 'eye-slash' : 'eye'} />
+            </button>
+          </div>
         </div>
         <button className="btn btn--primary btn--block" type="submit" disabled={submitting}>
           {submitting ? 'Entrando...' : 'Entrar'}

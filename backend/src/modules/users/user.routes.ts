@@ -19,6 +19,12 @@ userRoutes.post(
   upload.single('avatar'),
   asyncHandler(userController.uploadAvatar),
 );
+userRoutes.post(
+  '/me/feed-cover',
+  authenticate,
+  upload.single('cover'),
+  asyncHandler(userController.uploadFeedCover),
+);
 userRoutes.get('/me/favorites', authenticate, asyncHandler(userController.listFavorites));
 userRoutes.delete('/me', authenticate, asyncHandler(userController.deleteAccount));
 

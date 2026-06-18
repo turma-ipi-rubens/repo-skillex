@@ -361,7 +361,7 @@ export async function completeRequest(userId: string, id: string) {
 }
 
 // ---- Chat simples vinculado à solicitação ----
-async function ensureParticipant(id: string, userId: string) {
+export async function ensureParticipant(id: string, userId: string) {
   const r = await getRawRequest(id);
   if (r.requesterId !== userId && r.recipientId !== userId) {
     throw new ForbiddenError('Você não participa desta solicitação');

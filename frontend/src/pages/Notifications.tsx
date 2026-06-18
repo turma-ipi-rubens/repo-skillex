@@ -5,6 +5,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Icon } from '../components/ui/Icon';
 import { Spinner } from '../components/ui/Spinner';
 import { useAuth } from '../contexts/AuthContext';
+import { useRealtime } from '../hooks/useRealtime';
 import { api } from '../services/api';
 import { timeAgo } from '../utils/format';
 
@@ -38,6 +39,12 @@ export function Notifications() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Recarrega ao receber uma notificação nova: estando na tela, o item
+  // novo passa a aparecer no topo da lista sem precisar de refresh manual.
+  useRealtime('notification:new', () => {
+    load();
+  });
 
   const readAll = async () => {
     await api.post('/notifications/read-all');

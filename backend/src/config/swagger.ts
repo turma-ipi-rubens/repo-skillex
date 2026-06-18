@@ -1037,6 +1037,79 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
+      '/requests/{id}/whiteboard/strokes': {
+        get: {
+          tags: ['Requests'],
+          summary: 'Listar traços do quadro colaborativo',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: {
+            200: { description: 'Lista de traços (ordem cronológica)' },
+            403: { description: 'Não participa da solicitação' },
+            401: { description: 'Não autenticado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        post: {
+          tags: ['Requests'],
+          summary: 'Adicionar um traço ao quadro colaborativo',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['tool', 'color', 'size', 'points'],
+                  properties: {
+                    tool: { type: 'string', enum: ['PEN', 'ERASER', 'LINE', 'RECT', 'ELLIPSE', 'TEXT'] },
+                    color: { type: 'string', example: '#f97316' },
+                    size: { type: 'integer', minimum: 1, maximum: 64 },
+                    points: {
+                      type: 'array',
+                      items: { type: 'array', items: { type: 'number' }, minItems: 2, maxItems: 2 },
+                      description: 'Pontos normalizados [0..1]',
+                    },
+                    text: { type: 'string', maxLength: 200 },
+                    pageIndex: { type: 'integer', default: 0 },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            201: { description: 'Traço criado e propagado pela room' },
+            400: { description: 'Quadro indisponível (solicitação ainda não aceita) ou payload inválido' },
+            403: { description: 'Não participa da solicitação' },
+            401: { description: 'Não autenticado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+        delete: {
+          tags: ['Requests'],
+          summary: 'Limpar o quadro colaborativo (apaga todos os traços)',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: {
+            200: { description: 'Quadro limpo' },
+            403: { description: 'Não participa da solicitação' },
+            401: { description: 'Não autenticado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
+      '/requests/{id}/whiteboard/strokes/last': {
+        delete: {
+          tags: ['Requests'],
+          summary: 'Desfazer o último traço do próprio autor',
+          security: [{ bearerAuth: [] }],
+          parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+          responses: {
+            200: { description: 'Traço removido' },
+            404: { description: 'Nada para desfazer' },
+            403: { description: 'Não participa da solicitação' },
+            401: { description: 'Não autenticado', content: { 'application/json': { schema: { $ref: '#/components/schemas/Error' } } } },
+          },
+        },
+      },
 
       // ─── WALLET ───────────────────────────────────────────────────────────
       '/wallet': {

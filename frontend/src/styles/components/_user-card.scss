@@ -7,9 +7,18 @@
   box-shadow: var(--shadow-sm);
   transition: transform 0.12s, box-shadow 0.15s;
   margin-bottom: var(--space-4);
+  overflow: hidden; // mantém a capa dentro das bordas arredondadas
 
   &:hover {
     box-shadow: var(--shadow);
+  }
+  &__cover {
+    aspect-ratio: 16 / 9;
+    margin: calc(var(--space-5) * -1) calc(var(--space-5) * -1) var(--space-4);
+    background-color: var(--surface-2);
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid var(--border);
   }
   &__top {
     display: flex;

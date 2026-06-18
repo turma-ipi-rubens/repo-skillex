@@ -1,0 +1,322 @@
+// ----- Quadro colaborativo (Whiteboard) -----
+//
+// Overlay full-screen com z-index ligeiramente abaixo do video-modal (200) para
+// que, quando ambos estiverem abertos, o quadro fique como camada principal mas
+// possa ser fechado sem afetar a videochamada por trás.
+//
+// Camadas:
+//   190  .whiteboard
+//   200  .video-modal
+//   250  .board-fab  (botão flutuante, sempre acessível)
+//  9999  .overlay     (confirm dialog acima de tudo)
+.whiteboard {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  animation: fade-in 0.18s ease;
+  color: var(--text);
+  transition: inset 0.22s ease, width 0.22s ease, height 0.22s ease;
+
+  // Modo split: quadro divide o viewport com a videochamada. Em telas largas,
+  // fica à direita com largura controlada pela CSS var `--split-ratio` (0..1),
+  // ajustável pelo `SplitDivider`. Em telas estreitas, mantém stack fixo.
+  &--split {
+    @media (min-width: 768px) {
+      inset: 0 0 0 auto;
+      width: calc((1 - var(--split-ratio, 0.5)) * 100%);
+      border-left: 1px solid var(--border);
+    }
+    @media (max-width: 767px) {
+      inset: auto 0 0 0;
+      height: 55vh;
+      border-top: 1px solid var(--border);
+    }
+  }
+}
+
+.whiteboard__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.whiteboard__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.whiteboard__tools,
+.whiteboard__palette,
+.whiteboard__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.whiteboard__tool-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+
+  &:hover {
+    background: var(--surface-2);
+  }
+
+  &--active {
+    background: var(--color-primary-tint);
+    border-color: var(--color-primary);
+    color: var(--color-primary-dark);
+  }
+}
+
+.whiteboard__color-swatch {
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+  outline: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.12s ease;
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &--active {
+    outline: 2px solid var(--color-primary);
+    transform: scale(1.15);
+  }
+}
+
+.whiteboard__color-picker {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.whiteboard__size {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+
+  input[type='range'] {
+    width: 120px;
+  }
+}
+
+.whiteboard__size-value {
+  display: inline-block;
+  min-width: 22px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.whiteboard__canvas-wrap {
+  flex: 1;
+  position: relative;
+  background: #ffffff;
+  overflow: hidden;
+  touch-action: none; // permite captura de pointer em telas touch
+  cursor: crosshair;
+}
+
+[data-theme='dark'] .whiteboard__canvas-wrap {
+  // Mantemos a área de desenho sempre clara para o branco do giz contrastar.
+  background: #ffffff;
+}
+
+.whiteboard__canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.whiteboard__loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: var(--space-3);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.75);
+  z-index: 1;
+}
+
+.whiteboard__cursor-ghost {
+  position: absolute;
+  transform: translate(-2px, -2px);
+  color: var(--color-primary);
+  pointer-events: none;
+  font-size: 1rem;
+  opacity: 0.8;
+  transition: left 0.04s linear, top 0.04s linear;
+}
+
+@media (max-width: 640px) {
+  .whiteboard__toolbar {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+  }
+  .whiteboard__size input[type='range'] {
+    width: 80px;
+  }
+}
+
+// ----- Botão flutuante (FAB) para abrir/fechar o quadro -----
+// Fica sempre disponível sobre a videochamada (200) e sobre o quadro (190).
+.board-fab {
+  position: fixed;
+  right: var(--space-4);
+  bottom: calc(var(--nav-h) + var(--space-3));
+  z-index: 250;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-full);
+  border: 0;
+  background: var(--color-primary);
+  color: var(--on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  cursor: pointer;
+  box-shadow: var(--shadow-lg);
+  transition: transform 0.18s ease, background 0.18s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    background: var(--color-primary-dark);
+  }
+
+  &--open {
+    background: var(--danger);
+    &:hover {
+      background: #c0392b;
+    }
+  }
+
+  // Em desktop a navegação inferior vira sidebar (>= 1024px) e o FAB cola na
+  // borda direita do viewport sem precisar reservar espaço para a nav.
+  @media (min-width: 1024px) {
+    bottom: var(--space-5);
+  }
+}
+
+// ----- Ajustes na videochamada para o modo split -----
+.video-modal {
+  transition: inset 0.22s ease, width 0.22s ease, height 0.22s ease;
+
+  &--split {
+    @media (min-width: 768px) {
+      inset: 0 auto 0 0;
+      width: calc(var(--split-ratio, 0.5) * 100%);
+    }
+    @media (max-width: 767px) {
+      inset: 0 0 auto 0;
+      height: 45vh;
+    }
+  }
+}
+
+// ----- Barra divisória redimensionável (entre vídeo e quadro) -----
+// Só aparece em telas >= 768px, quando ambos os modais estão visíveis.
+.split-divider {
+  display: none;
+
+  @media (min-width: 768px) {
+    display: block;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    width: 14px;
+    left: calc(var(--split-ratio, 0.5) * 100%);
+    transform: translateX(-50%);
+    z-index: 210; // acima dos modais (190 / 200), abaixo do FAB (250)
+    background: transparent;
+    cursor: col-resize;
+    touch-action: none;
+
+    // Linha visual fina no meio da área de captura
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 2px;
+      background: var(--border);
+      transform: translateX(-50%);
+      transition: background 0.18s ease, width 0.18s ease;
+    }
+
+    &:hover::before,
+    &--active::before {
+      background: var(--color-primary);
+      width: 4px;
+    }
+  }
+
+  &__handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 26px;
+    height: 56px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 1rem;
+    pointer-events: none; // o pai já captura o pointer
+  }
+}
+
+// Durante o drag, desabilita seleção e força o cursor em toda a tela.
+// Também tira pointer-events dos iframes/canvas internos para que o
+// `setPointerCapture` do divisor receba todos os eventos sem interrupção.
+body.body--resizing {
+  cursor: col-resize !important;
+  user-select: none;
+
+  .video-modal__body iframe,
+  .whiteboard__canvas {
+    pointer-events: none;
+  }
+}

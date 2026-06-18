@@ -26,7 +26,7 @@ export function Register() {
   const { cities, loading: loadingCities } = useBrazilCities(state);
 
   const stateOptions = useMemo(
-    () => states.map((s) => ({ value: s.sigla, label: `${s.nome} (${s.sigla})` })),
+    () => states.map((s) => ({ value: s.sigla, label: s.sigla })),
     [states],
   );
   const cityOptions = useMemo(() => cities.map((c) => ({ value: c, label: c })), [cities]);

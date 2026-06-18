@@ -297,18 +297,21 @@ describe('GET /api/users (busca avançada)', () => {
     });
 
     const old = await makeUser({ onboardingCompleted: true });
+    await addTeaching(old.user.id, skill.id);
     await prisma.userProfile.update({
       where: { userId: old.user.id },
       data: { languages: '["Inglês"]', availability: '["NIGHT"]', birthDate: yearsAgo(60) },
     });
 
     const child = await makeUser({ onboardingCompleted: true });
+    await addTeaching(child.user.id, skill.id);
     await prisma.userProfile.update({
       where: { userId: child.user.id },
       data: { birthDate: yearsAgo(10) },
     });
 
     const noBirth = await makeUser({ onboardingCompleted: true });
+    await addTeaching(noBirth.user.id, skill.id);
 
     return { me, cat, skill, full, old, child, noBirth };
   }

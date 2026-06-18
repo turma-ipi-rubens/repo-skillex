@@ -6,6 +6,8 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { Icon } from '../components/ui/Icon';
 import { Spinner } from '../components/ui/Spinner';
 import { VideoCall } from '../components/VideoCall';
+import { Whiteboard } from '../components/Whiteboard';
+import { SplitDivider } from '../components/SplitDivider';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useRealtime, useRequestRoom } from '../hooks/useRealtime';
@@ -23,7 +25,25 @@ export function RequestDetail() {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [callOpen, setCallOpen] = useState(false);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const [splitRatio, setSplitRatio] = useState(0.5);
   const chatRef = useRef<HTMLDivElement>(null);
+  const splitActive = callOpen && boardOpen;
+
+  // Mantém a CSS var --split-ratio no <html> quando ambos os modais estão
+  // visíveis. Vídeo e quadro leem essa var para ajustar suas larguras em
+  // tempo real conforme o usuário arrasta o SplitDivider.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (splitActive) {
+      root.style.setProperty('--split-ratio', String(splitRatio));
+    } else {
+      root.style.removeProperty('--split-ratio');
+    }
+    return () => {
+      root.style.removeProperty('--split-ratio');
+    };
+  }, [splitActive, splitRatio]);
 
   const reload = useCallback(async () => {
     try {
@@ -312,7 +332,32 @@ export function RequestDetail() {
           requestId={id}
           otherUserName={r.otherUser?.name}
           onClose={() => setCallOpen(false)}
+          split={splitActive}
         />
+      )}
+
+      {boardOpen && id && (
+        <Whiteboard
+          requestId={id}
+          onClose={() => setBoardOpen(false)}
+          split={splitActive}
+        />
+      )}
+
+      {splitActive && (
+        <SplitDivider value={splitRatio} onChange={setSplitRatio} />
+      )}
+
+      {(r.status === 'ACCEPTED' || r.status === 'COMPLETED') && (
+        <button
+          type="button"
+          className={`board-fab${boardOpen ? ' board-fab--open' : ''}`}
+          onClick={() => setBoardOpen((v) => !v)}
+          aria-label={boardOpen ? 'Fechar quadro colaborativo' : 'Abrir quadro colaborativo'}
+          title={boardOpen ? 'Fechar quadro colaborativo' : 'Abrir quadro colaborativo'}
+        >
+          <Icon name={boardOpen ? 'x-lg' : 'easel2'} />
+        </button>
       )}
     </>
   );

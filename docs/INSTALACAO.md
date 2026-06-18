@@ -92,9 +92,9 @@ Todas as contas usam a senha **`senha123`**.
 |--------|-------|----------|
 | `ana@skillex.com` | **Admin** | Ensina Violino, quer Tricô (match perfeito com Bruno) |
 | `bruno@skillex.com` | Usuário | Ensina Tricô, quer Violino |
-| `carla@skillex.com` | Usuário | Ensina Inglês/Fotografia, quer Programação |
-| `diego@skillex.com` | Usuário | Ensina Programação, quer Inglês |
-| `lucas@skillex.com` | Usuário | Fotógrafo (recebeu pagamento em moedas) |
+| `carlos@skillex.com` | Usuário | Ensina Inglês/Fotografia, quer Programação |
+| `fernanda@skillex.com` | Usuário | Ensina Programação, quer Inglês |
+| `laura@skillex.com` | Usuário | Fotógrafo (recebeu pagamento em moedas) |
 
 > Dica para a banca: faça login como **`bruno@skillex.com`** e abra o **Feed** — a
 > **Ana** aparece no topo com **score 100** (match perfeito violino ↔ tricô).

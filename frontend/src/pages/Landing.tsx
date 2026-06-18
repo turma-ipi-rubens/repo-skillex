@@ -4,6 +4,7 @@ import { Icon } from '../components/ui/Icon';
 import { Spinner } from '../components/ui/Spinner';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../hooks/useTheme';
+import { isStandalonePWA } from '../utils/pwa';
 
 const CATEGORIES: Array<[string, string]> = [
   ['music-note-beamed', 'Música'],
@@ -48,6 +49,10 @@ export function Landing() {
   }
   if (status === 'authed') {
     return <Navigate to={user!.onboardingCompleted ? '/feed' : '/onboarding'} replace />;
+  }
+  // PWA instalado: pula a landing — vai direto para o login.
+  if (isStandalonePWA()) {
+    return <Navigate to="/login" replace />;
   }
 
   const scrollTo = (e: React.MouseEvent, id: string) => {

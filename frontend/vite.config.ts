@@ -37,6 +37,15 @@ export default defineConfig({
         navigateFallback: 'index.html',
         // API, uploads e WebSocket NUNCA passam pelo cache do service worker
         navigateFallbackDenylist: [/^\/api\//, /^\/uploads\//, /^\/socket\.io\//],
+        runtimeCaching: [
+          {
+            // Fotos de perfil/capa são versionadas pelo nome do arquivo, mas
+            // o service worker default pode entregar a versão precached da
+            // home. Forçamos NetworkOnly para sempre buscar o arquivo atual.
+            urlPattern: /^\/uploads\//,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
     }),
   ],

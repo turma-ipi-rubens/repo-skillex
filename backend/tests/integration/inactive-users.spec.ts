@@ -32,6 +32,9 @@ describe('contas desativadas (isActive = false)', () => {
     const me = await makeUser({ onboardingCompleted: true });
     const visible = await makeUser({ onboardingCompleted: true });
     const hidden = await makeUser({ onboardingCompleted: true });
+    // O filtro de descobertas exige teaching skill cadastrada.
+    const skill = await makeSkill(`Skill Inactive ${Date.now()}`);
+    await addTeaching(visible.user.id, skill.id);
     await deactivate(hidden.user.id);
 
     const res = await api.get('/api/feed').set('Authorization', bearer(me.token));
@@ -79,6 +82,9 @@ describe('contas desativadas (isActive = false)', () => {
     const a = await makeUser({ onboardingCompleted: true });
     const b = await makeUser({ onboardingCompleted: true });
     const skill = await makeSkill(`Skill Ranking ${Date.now()}`);
+    // Ambos precisam de teaching skill para participar do ranking
+    // (a aparece graças ao exchange COMPLETED; b é deactivated abaixo).
+    await addTeaching(a.user.id, skill.id);
     await addTeaching(b.user.id, skill.id);
     await prisma.exchangeRequest.create({
       data: {

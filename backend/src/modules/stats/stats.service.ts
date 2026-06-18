@@ -48,7 +48,12 @@ export async function getTrends(limit = 8) {
 export async function getRanking(limit = 20) {
   const [users, completed] = await Promise.all([
     prisma.user.findMany({
-      where: { onboardingCompleted: true, isActive: true },
+      where: {
+        onboardingCompleted: true,
+        isActive: true,
+        // Quem não tem nada para ensinar não compete no ranking de reputação.
+        teachingSkills: { some: {} },
+      },
       select: {
         id: true,
         name: true,

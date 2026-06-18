@@ -85,15 +85,20 @@ export function EditProfile() {
     setCropSrc(url);
   };
 
-  const onCropDone = async (blob: Blob) => {
+  const onCropDone = async (blob: Blob, dataUrl: string) => {
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     setCropSrc(null);
+    // Preview otimista: mostra a nova foto imediatamente usando o data URL
+    // local — sem depender de fetch/cache do navegador para /uploads.
+    setUserData((prev: any) => ({ ...prev, avatarUrl: dataUrl }));
     const fd = new FormData();
     fd.append('avatar', new File([blob], 'avatar.jpg', { type: 'image/jpeg' }));
     try {
       const res = await api.upload('/users/me/avatar', fd);
+      // Substitui o preview pelo URL persistido — a partir daqui qualquer
+      // outra tela que ler o contexto verá a foto correta.
       setUser(res.user);
-      setUserData((prev: any) => ({ ...prev, avatarUrl: res.user.avatarUrl }));
+      setUserData(res.user);
       toast('Foto atualizada!', 'success');
     } catch {
       toast('Erro ao enviar a foto', 'error');
@@ -103,6 +108,36 @@ export function EditProfile() {
   const onCropCancel = () => {
     if (cropSrc) URL.revokeObjectURL(cropSrc);
     setCropSrc(null);
+  };
+
+  const onCoverPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+    const invalid = validateImageFile(file, 5);
+    if (invalid) {
+      toast(invalid, 'error');
+      return;
+    }
+    // Preview otimista via FileReader — mostra a capa antes mesmo do upload
+    // terminar, sem depender de re-fetch de /uploads.
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUserData((prev: any) => ({ ...prev, feedCoverUrl: reader.result as string }));
+    };
+    reader.readAsDataURL(file);
+
+    const fd = new FormData();
+    fd.append('cover', file);
+    try {
+      const res = await api.upload('/users/me/feed-cover', fd);
+      setUser(res.user);
+      setUserData((prev: any) => ({ ...prev, feedCoverUrl: res.user.feedCoverUrl }));
+      toast('Capa atualizada!', 'success');
+    } catch {
+      toast('Erro ao enviar a capa', 'error');
+    }
   };
 
   const toggleAvailability = (av: string) => {
@@ -150,6 +185,20 @@ export function EditProfile() {
         <label className="btn btn--outline btn--sm">
           <Icon name="camera" /> Trocar foto
           <input type="file" id="avatar-input" accept="image/*" hidden onChange={onAvatarPick} />
+        </label>
+      </div>
+
+      <div className="cover-edit">
+        <div
+          className="cover-edit__preview"
+          style={user.feedCoverUrl ? { backgroundImage: `url(${user.feedCoverUrl})` } : undefined}
+          aria-hidden
+        >
+          {!user.feedCoverUrl && <span className="muted">Sem capa</span>}
+        </div>
+        <label className="btn btn--outline btn--sm">
+          <Icon name="image" /> Trocar capa do feed
+          <input type="file" accept="image/*" hidden onChange={onCoverPick} />
         </label>
       </div>
 

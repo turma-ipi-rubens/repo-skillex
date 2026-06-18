@@ -30,6 +30,11 @@ export async function uploadAvatar(req: AuthRequest, res: Response): Promise<Res
   return res.json({ user: await userService.setAvatar(req.userId!, req.file.filename) });
 }
 
+export async function uploadFeedCover(req: AuthRequest, res: Response): Promise<Response> {
+  if (!req.file) throw new BadRequestError('Nenhuma imagem enviada');
+  return res.json({ user: await userService.setFeedCover(req.userId!, req.file.filename) });
+}
+
 export async function deleteAccount(req: AuthRequest, res: Response): Promise<Response> {
   const { password } = deleteAccountSchema.parse(req.body);
   return res.json(await userService.deleteAccount(req.userId!, password));

@@ -22,7 +22,14 @@ export async function computeFeed(userId: string, opts: FeedOptions) {
   const meMatch = toMatchUser(me);
 
   const candidates = await prisma.user.findMany({
-    where: { id: { not: userId }, onboardingCompleted: true, isActive: true },
+    where: {
+      id: { not: userId },
+      onboardingCompleted: true,
+      isActive: true,
+      // Quem não cadastrou nenhuma habilidade para ensinar não tem o que
+      // oferecer no feed — escondemos para reduzir ruído.
+      teachingSkills: { some: {} },
+    },
     include: { ...matchInclude, reviewsReceived: { select: { rating: true } } },
   });
 

@@ -17,6 +17,7 @@ export interface AppUser {
   email: string;
   role: string;
   avatarUrl: string | null;
+  feedCoverUrl: string | null;
   bio: string | null;
   city: string | null;
   state: string | null;

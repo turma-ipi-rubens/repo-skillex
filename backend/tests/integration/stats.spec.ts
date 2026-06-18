@@ -30,6 +30,9 @@ describe('GET /api/stats/ranking', () => {
     const a = await makeUser({ onboardingCompleted: true });
     const b = await makeUser({ onboardingCompleted: true });
     const skill = await makeSkill('Aula Rank');
+    // O filtro de descobertas exige ao menos 1 teaching skill — b é o
+    // professor que vai aparecer no ranking, então precisa cadastrar.
+    await addTeaching(b.user.id, skill.id);
 
     const request = await prisma.exchangeRequest.create({
       data: {

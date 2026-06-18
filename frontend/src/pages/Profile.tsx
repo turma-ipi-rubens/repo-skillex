@@ -131,6 +131,13 @@ export function Profile() {
           <Icon name="arrow-left" /> Voltar
         </button>
       )}
+      {user.feedCoverUrl && (
+        <div
+          className="profile-cover"
+          style={{ backgroundImage: `url(${user.feedCoverUrl})` }}
+          aria-hidden
+        />
+      )}
       <div className="profile-header">
         <Avatar user={user} size="lg" />
         <div className="profile-header__name">{user.name}</div>

@@ -61,6 +61,26 @@ export function initRealtime(httpServer: HttpServer): Server {
       if (typeof requestId !== 'string' || !requestId) return;
       socket.leave(`request:${requestId}`);
     });
+
+    // Quadro colaborativo — relays efêmeros (sem persistência).
+    // Só ecoam para quem já está na room request:<id>, que foi validada no
+    // request:join. O traço final é persistido via REST e ressincronizado
+    // pelo evento whiteboard:stroke emitido pelo service.
+    socket.on('whiteboard:live', (payload: unknown) => {
+      const p = payload as { requestId?: unknown } | null;
+      if (!p || typeof p.requestId !== 'string') return;
+      socket
+        .to(`request:${p.requestId}`)
+        .emit('whiteboard:live', { ...(p as object), fromUserId: userId });
+    });
+
+    socket.on('whiteboard:cursor', (payload: unknown) => {
+      const p = payload as { requestId?: unknown } | null;
+      if (!p || typeof p.requestId !== 'string') return;
+      socket
+        .to(`request:${p.requestId}`)
+        .emit('whiteboard:cursor', { ...(p as object), fromUserId: userId });
+    });
   });
 
   setIO(io);

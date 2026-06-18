@@ -16,8 +16,12 @@ async function buildScenario() {
   await addLearning(partner.user.id, s2.id);
 
   // sem habilidades compatíveis (dois com pontuação idêntica → exercita o desempate)
+  // Ambos ensinam algo que `me` NÃO quer aprender — entram no feed mas sem match.
+  const sNoMatch = await makeSkill('Bordado Feed');
   const stranger = await makeUser({ onboardingCompleted: true });
+  await addTeaching(stranger.user.id, sNoMatch.id);
   const stranger2 = await makeUser({ onboardingCompleted: true });
+  await addTeaching(stranger2.user.id, sNoMatch.id);
 
   // não concluiu onboarding → não deve aparecer
   const hidden = await makeUser({ onboardingCompleted: false });

@@ -2,7 +2,9 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 80;
+  // Confirms precisam sempre estar acima de qualquer outro modal (quadro 190,
+  // vídeo chamada 200, FAB 250). Fica num patamar próprio bem alto.
+  z-index: 9999;
   background: rgba(17, 24, 39, 0.5);
   display: flex;
   align-items: flex-end;

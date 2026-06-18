@@ -7,7 +7,12 @@ export type RealtimeEvent =
   | 'chat:message'
   | 'request:updated'
   | 'request:joined'
-  | 'request:call-started';
+  | 'request:call-started'
+  | 'whiteboard:stroke'
+  | 'whiteboard:undo'
+  | 'whiteboard:clear'
+  | 'whiteboard:live'
+  | 'whiteboard:cursor';
 
 const EVENTS: RealtimeEvent[] = [
   'notification:new',
@@ -15,6 +20,11 @@ const EVENTS: RealtimeEvent[] = [
   'request:updated',
   'request:joined',
   'request:call-started',
+  'whiteboard:stroke',
+  'whiteboard:undo',
+  'whiteboard:clear',
+  'whiteboard:live',
+  'whiteboard:cursor',
 ];
 
 let socket: Socket | null = null;
@@ -78,4 +88,14 @@ export function leaveRequestRoom(): void {
     socket?.emit('request:leave', currentRequestRoom);
     currentRequestRoom = null;
   }
+}
+
+/** Emite um traço em progresso (efêmero, sem persistência) para a room. */
+export function emitWhiteboardLive(payload: Record<string, unknown>): void {
+  socket?.emit('whiteboard:live', payload);
+}
+
+/** Emite a posição do cursor no quadro (efêmero, sem persistência). */
+export function emitWhiteboardCursor(payload: Record<string, unknown>): void {
+  socket?.emit('whiteboard:cursor', payload);
 }

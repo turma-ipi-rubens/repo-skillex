@@ -14,6 +14,13 @@ export function UserCard({ user }: { user: any }) {
 
   return (
     <article className="user-card">
+      {user.feedCoverUrl && (
+        <div
+          className="user-card__cover"
+          style={{ backgroundImage: `url(${user.feedCoverUrl})` }}
+          aria-hidden
+        />
+      )}
       <div className="user-card__top">
         <Avatar user={user} size="md" />
         <div className="user-card__info">

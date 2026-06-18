@@ -123,6 +123,14 @@ export async function setAvatar(userId: string, filename: string) {
   return getAuthUser(userId);
 }
 
+export async function setFeedCover(userId: string, filename: string) {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { feedCoverUrl: `/uploads/${filename}` },
+  });
+  return getAuthUser(userId);
+}
+
 /** Perfil público de outro usuário, com avaliações, match e status de favorito. */
 export async function getPublicProfile(viewerId: string, targetId: string) {
   const user = await prisma.user.findUnique({
@@ -199,7 +207,10 @@ export async function searchUsers(userId: string, f: SearchInput) {
   if (f.level) teachingSome.level = f.level;
   if (f.acceptsCoins !== undefined) teachingSome.acceptsCoins = f.acceptsCoins;
   if (f.acceptsExchange !== undefined) teachingSome.acceptsExchange = f.acceptsExchange;
-  if (Object.keys(teachingSome).length > 0) where.teachingSkills = { some: teachingSome };
+  // Mesmo sem filtro específico, exigimos `some: {}` para excluir usuários
+  // que não cadastraram nenhuma habilidade que ensinam (não aparecem em
+  // descobertas).
+  where.teachingSkills = { some: Object.keys(teachingSome).length > 0 ? teachingSome : {} };
 
   if (f.city) where.city = { contains: f.city };
   if (f.state) where.state = { contains: f.state };

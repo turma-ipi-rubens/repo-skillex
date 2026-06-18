@@ -43,8 +43,27 @@ services:
       XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
       XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
       TZ: ${TZ:-America/Sao_Paulo}
-      # CORS liberado para o frontend SkillEx (origem que carregará o iframe).
-      ENABLE_XMPP_WEBSOCKET: 1
+      # URLs de sinalização DESABILITADAS / RELATIVIZADAS em dev HTTP:
+      # ----------------------------------------------------------------------
+      # A imagem `jitsi/web:stable-9779` concatena `PUBLIC_URL_DOMAIN` direto
+      # depois de `https://` / `wss://` ao montar `config.bosh` e
+      # `config.websocket`, sem normalizar o protocolo. Como nosso
+      # PUBLIC_URL é `http://jitsi.localhost:8000`, o config.js renderizado
+      # vira algo como:
+      #   config.bosh      = 'https://http://jitsi.localhost:8000/http-bind';
+      #   config.websocket = 'wss://http://jitsi.localhost:8000/xmpp-websocket';
+      # Ambas inválidas — o iframe carrega mas o cliente nunca conecta no
+      # XMPP, então a sala fica em "Connecting…" indefinidamente.
+      #
+      # Soluções dev:
+      #   - `BOSH_RELATIVE=1` faz o template gerar `config.bosh = '/http-bind'`
+      #     (relativo, herda http:// da página). Em produção sob HTTPS real,
+      #     também funciona — então pode ficar `1` em todos os ambientes.
+      #   - `ENABLE_XMPP_WEBSOCKET=0` desabilita o WS (não há flag para
+      #     relativizar). O cliente cai no BOSH (HTTP long polling), perfeito
+      #     para dev. Em produção HTTPS, reative o WS para melhor latência.
+      BOSH_RELATIVE: 1
+      ENABLE_XMPP_WEBSOCKET: 0
     depends_on:
       - prosody
 

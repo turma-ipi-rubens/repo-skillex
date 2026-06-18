@@ -27,6 +27,60 @@ function slugify(text: string): string {
 const daysAgo = (d: number) => new Date(Date.now() - d * 86400000);
 const json = (arr: string[]) => JSON.stringify(arr);
 
+/**
+ * Mapa de habilidades para tags visuais (em inglês, separadas por vírgula).
+ * LoremFlickr busca a foto cruzando as tags — quanto mais específicas e em
+ * inglês, melhor o resultado. Ex.: "Violino" → "violin,classical-music"
+ * traz fotos de violinos clássicos, e não de qualquer instrumento.
+ */
+const SKILL_BANNER_TAGS: Record<string, string> = {
+  Violino: 'violin,classical-music',
+  Violão: 'acoustic-guitar,music',
+  Tricô: 'knitting,wool,yarn',
+  Crochê: 'crochet,handmade',
+  Inglês: 'english,books,language',
+  Espanhol: 'spanish,books,travel',
+  Fotografia: 'photography,camera,photo',
+  Culinária: 'cooking,food,italian',
+  Confeitaria: 'pastry,cake,dessert',
+  'Design Gráfico': 'graphic-design,art,creative',
+  'UI/UX Design': 'ux-design,technology,wireframe',
+  'Programação JavaScript': 'code,javascript,computer',
+  'Programação Python': 'python,code,programming',
+  'Marketing Digital': 'marketing,social-media,business',
+  Excel: 'spreadsheet,data,office',
+  Matemática: 'mathematics,equations,blackboard',
+  Yoga: 'yoga,meditation,wellness',
+};
+
+function deterministicHash(seed: string): number {
+  let hash = 0;
+  for (const ch of seed) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return hash;
+}
+
+/**
+ * URL de avatar (rosto humano) consistente com o gênero do usuário —
+ * randomuser.me serve fotos prontas em /men/N e /women/N (0–99). O índice
+ * é derivado do seed do usuário para que cada um tenha uma foto única e
+ * estável entre execuções do seeder.
+ */
+function avatarFor(gender: string, seed: string): string {
+  const slot = gender === 'MALE' ? 'men' : 'women';
+  const idx = deterministicHash(seed) % 100;
+  return `https://randomuser.me/api/portraits/${slot}/${idx}.jpg`;
+}
+
+/**
+ * URL de capa do feed (LoremFlickr) usando tags temáticas da habilidade
+ * principal — assim a foto faz sentido com o que o usuário ensina.
+ */
+function coverFor(skillName: string, seed: string): string {
+  const tags = SKILL_BANNER_TAGS[skillName] || slugify(skillName) || 'skill';
+  const lock = deterministicHash(seed) % 100000;
+  return `https://loremflickr.com/800/400/${tags}?lock=${lock}`;
+}
+
 async function clean() {
   console.log('🧹 Limpando dados existentes...');
   await prisma.chatMessage.deleteMany();
@@ -201,16 +255,16 @@ const USERS: UserSpec[] = [
     learn: [{ skill: 'Violino', currentLevel: 'NONE', goal: 'Tocar minhas primeiras músicas.' }],
   },
   {
-    key: 'carla',
-    name: 'Carla Mendes',
-    email: 'carla@skillex.com',
-    bio: 'Professora de inglês e fotógrafa nas horas vagas. Sonho em programar.',
+    key: 'carlos',
+    name: 'Carlos Mendes',
+    email: 'carlos@skillex.com',
+    bio: 'Professor de inglês e fotógrafo nas horas vagas. Sonho em programar.',
     city: 'São Paulo',
     state: 'SP',
-    avatarSeed: 'carla',
-    gender: 'FEMALE',
+    avatarSeed: 'carlos',
+    gender: 'MALE',
     birthDate: '1996-11-02',
-    nationality: 'Brasileira',
+    nationality: 'Brasileiro',
     languages: ['Português', 'Inglês'],
     availability: ['AFTERNOON', 'NIGHT'],
     modality: 'ONLINE',
@@ -233,16 +287,16 @@ const USERS: UserSpec[] = [
     ],
   },
   {
-    key: 'diego',
-    name: 'Diego Souza',
-    email: 'diego@skillex.com',
-    bio: 'Desenvolvedor full-stack. Adoro ensinar código e quero destravar o inglês.',
-    city: 'São Paulo',
-    state: 'SP',
-    avatarSeed: 'diego',
-    gender: 'MALE',
+    key: 'fernanda',
+    name: 'Fernanda Costa',
+    email: 'fernanda@skillex.com',
+    bio: 'Desenvolvedora full-stack. Ensino JavaScript e Python. Quero fluência em inglês para trabalhar fora.',
+    city: 'Rio de Janeiro',
+    state: 'RJ',
+    avatarSeed: 'fernanda',
+    gender: 'FEMALE',
     birthDate: '1993-01-18',
-    nationality: 'Brasileiro',
+    nationality: 'Brasileira',
     languages: ['Português'],
     availability: ['NIGHT'],
     modality: 'ONLINE',
@@ -355,16 +409,16 @@ const USERS: UserSpec[] = [
     learn: [{ skill: 'Fotografia', currentLevel: 'BEGINNER', goal: 'Fotos para o Instagram.' }],
   },
   {
-    key: 'henrique',
-    name: 'Henrique Oliveira',
-    email: 'henrique@skillex.com',
-    bio: 'Analista de dados. Domino Excel e matemática. Foco em aprender inglês.',
+    key: 'karina',
+    name: 'Karina Santos',
+    email: 'karina@skillex.com',
+    bio: 'Especialista em Excel e reforço de Matemática. Quero treinar inglês técnico para a leitura de documentação.',
     city: 'São Paulo',
     state: 'SP',
-    avatarSeed: 'henrique',
-    gender: 'MALE',
+    avatarSeed: 'karina',
+    gender: 'FEMALE',
     birthDate: '1989-12-01',
-    nationality: 'Brasileiro',
+    nationality: 'Brasileira',
     languages: ['Português'],
     availability: ['NIGHT', 'WEEKEND'],
     modality: 'BOTH',
@@ -445,16 +499,16 @@ const USERS: UserSpec[] = [
     learn: [{ skill: 'Espanhol', currentLevel: 'BEGINNER', goal: 'Conversar em viagens.' }],
   },
   {
-    key: 'karina',
-    name: 'Karina Alves',
-    email: 'karina@skillex.com',
-    bio: 'Artesã de tricô e crochê. Quero aprender fotografia e inglês.',
+    key: 'luiz',
+    name: 'Luiz Silva',
+    email: 'luiz@skillex.com',
+    bio: 'Artesão de tricô e crochê. Quero aprender fotografia e inglês.',
     city: 'Belo Horizonte',
     state: 'MG',
-    avatarSeed: 'karina',
-    gender: 'FEMALE',
+    avatarSeed: 'luiz',
+    gender: 'MALE',
     birthDate: '1986-04-19',
-    nationality: 'Brasileira',
+    nationality: 'Brasileiro',
     languages: ['Português'],
     availability: ['MORNING', 'WEEKEND'],
     modality: 'IN_PERSON',
@@ -478,16 +532,16 @@ const USERS: UserSpec[] = [
     ],
   },
   {
-    key: 'lucas',
-    name: 'Lucas Ferreira',
-    email: 'lucas@skillex.com',
-    bio: 'Fotógrafo profissional. Curioso para aprender tricô com a vovó.',
+    key: 'laura',
+    name: 'Laura Mendes',
+    email: 'laura@skillex.com',
+    bio: 'Fotógrafa profissional, retratos e produtos. Curiosa para aprender tricô e fazer um presente artesanal.',
     city: 'São Paulo',
     state: 'SP',
-    avatarSeed: 'lucas',
-    gender: 'MALE',
+    avatarSeed: 'laura',
+    gender: 'FEMALE',
     birthDate: '1994-10-05',
-    nationality: 'Brasileiro',
+    nationality: 'Brasileira',
     languages: ['Português', 'Inglês'],
     availability: ['AFTERNOON', 'WEEKEND'],
     modality: 'BOTH',
@@ -541,7 +595,8 @@ async function main() {
         bio: u.bio,
         city: u.city,
         state: u.state,
-        avatarUrl: `https://i.pravatar.cc/300?u=${u.avatarSeed}`,
+        avatarUrl: avatarFor(u.gender, u.avatarSeed),
+        feedCoverUrl: u.teach[0] ? coverFor(u.teach[0].skill, u.avatarSeed) : null,
         onboardingCompleted: true,
         lastActiveAt: daysAgo(u.activeDaysAgo),
         profile: {
@@ -639,16 +694,16 @@ async function main() {
     },
   });
 
-  // R2 — Troca aceita: Carla (inglês) ↔ Diego (JS)
+  // R2 — Troca aceita: carlos (inglês) ↔ Fernanda (JS)
   const r2 = await prisma.exchangeRequest.create({
     data: {
-      requesterId: userMap.carla,
-      recipientId: userMap.diego,
+      requesterId: userMap.carlos,
+      recipientId: userMap.fernanda,
       requestedSkillId: skillMap['Programação JavaScript'],
       offeredSkillId: skillMap['Inglês'],
       type: 'EXCHANGE',
       status: 'ACCEPTED',
-      message: 'Diego, bora trocar? Inglês por JavaScript 😄',
+      message: 'Fernanda, bora trocar? Inglês por JavaScript 😄',
       suggestedDate: daysAgo(-2),
       createdAt: daysAgo(4),
       events: {
@@ -663,14 +718,14 @@ async function main() {
     data: [
       {
         requestId: r2.id,
-        senderId: userMap.carla,
-        content: 'Oi Diego! Que dia fica melhor pra você?',
+        senderId: userMap.carlos,
+        content: 'Oi Fernanda! Que dia fica melhor pra você?',
         read: true,
         createdAt: daysAgo(3),
       },
       {
         requestId: r2.id,
-        senderId: userMap.diego,
+        senderId: userMap.fernanda,
         content: 'Quinta à noite? Podemos começar pelo básico de JS.',
         read: false,
         createdAt: daysAgo(2),
@@ -693,31 +748,31 @@ async function main() {
     },
   });
 
-  // R4 — Aula paga pendente: Henrique paga Carla (inglês), moedas reservadas
+  // R4 — Aula paga pendente: Karina paga carlos (inglês), moedas reservadas
   const r4 = await prisma.exchangeRequest.create({
     data: {
-      requesterId: userMap.henrique,
-      recipientId: userMap.carla,
+      requesterId: userMap.karina,
+      recipientId: userMap.carlos,
       requestedSkillId: skillMap['Inglês'],
       type: 'COIN',
       status: 'PENDING',
       coinAmount: 50,
-      message: 'Carla, quero aulas de inglês técnico. Pago com moedas!',
+      message: 'carlos, quero aulas de inglês técnico. Pago com moedas!',
       createdAt: daysAgo(2),
       events: { create: [{ status: 'PENDING', note: 'Solicitação criada', createdAt: daysAgo(2) }] },
     },
   });
-  // Reserva (LOCK) das moedas do Henrique
-  const henriqueWallet = await prisma.wallet.findUniqueOrThrow({
-    where: { userId: userMap.henrique },
+  // Reserva (LOCK) das moedas do Karina
+  const karinaWallet = await prisma.wallet.findUniqueOrThrow({
+    where: { userId: userMap.karina },
   });
   await prisma.wallet.update({
-    where: { id: henriqueWallet.id },
+    where: { id: karinaWallet.id },
     data: { lockedBalance: 50 },
   });
   await prisma.coinTransaction.create({
     data: {
-      walletId: henriqueWallet.id,
+      walletId: karinaWallet.id,
       amount: -50,
       type: 'LOCK',
       balanceAfter: 50,
@@ -727,16 +782,16 @@ async function main() {
     },
   });
 
-  // R5 — Aula paga concluída: Gabriela paga Lucas (fotografia)
+  // R5 — Aula paga concluída: Gabriela paga Laura (fotografia)
   const r5 = await prisma.exchangeRequest.create({
     data: {
       requesterId: userMap.gabriela,
-      recipientId: userMap.lucas,
+      recipientId: userMap.laura,
       requestedSkillId: skillMap['Fotografia'],
       type: 'COIN',
       status: 'COMPLETED',
       coinAmount: 40,
-      message: 'Lucas, preciso melhorar minhas fotos de produto!',
+      message: 'Laura, preciso melhorar minhas fotos de produto!',
       suggestedDate: daysAgo(5),
       createdAt: daysAgo(9),
       events: {
@@ -748,11 +803,11 @@ async function main() {
       },
     },
   });
-  // Ledger do pagamento concluído (Gabriela → Lucas)
+  // Ledger do pagamento concluído (Gabriela → laura)
   const gabrielaWallet = await prisma.wallet.findUniqueOrThrow({
     where: { userId: userMap.gabriela },
   });
-  const lucasWallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: userMap.lucas } });
+  const lauraWallet = await prisma.wallet.findUniqueOrThrow({ where: { userId: userMap.laura } });
   await prisma.coinTransaction.createMany({
     data: [
       {
@@ -774,7 +829,7 @@ async function main() {
         createdAt: daysAgo(5),
       },
       {
-        walletId: lucasWallet.id,
+        walletId: lauraWallet.id,
         amount: 40,
         type: 'EARNING',
         balanceAfter: 140,
@@ -829,7 +884,7 @@ async function main() {
       {
         requestId: r5.id,
         authorId: userMap.gabriela,
-        targetId: userMap.lucas,
+        targetId: userMap.laura,
         skillId: skillMap['Fotografia'],
         rating: 4,
         comment: 'Ótimas dicas de fotografia de produto. Minhas fotos melhoraram muito!',
@@ -841,9 +896,9 @@ async function main() {
   console.log('💚 Criando favoritos...');
   await prisma.favorite.createMany({
     data: [
-      { userId: userMap.ana, favoriteUserId: userMap.carla },
-      { userId: userMap.carla, favoriteUserId: userMap.diego },
-      { userId: userMap.lucas, favoriteUserId: userMap.karina },
+      { userId: userMap.ana, favoriteUserId: userMap.carlos },
+      { userId: userMap.carlos, favoriteUserId: userMap.fernanda },
+      { userId: userMap.laura, favoriteUserId: userMap.karina },
     ],
   });
 
@@ -859,10 +914,10 @@ async function main() {
         createdAt: daysAgo(1),
       },
       {
-        userId: userMap.carla,
+        userId: userMap.carlos,
         type: 'REQUEST_RECEIVED',
         title: 'Nova solicitação recebida',
-        message: 'Henrique Oliveira quer agendar uma aula com você',
+        message: 'Karina Santos quer agendar uma aula com você',
         link: `/requests/${r4.id}`,
         createdAt: daysAgo(2),
       },
@@ -881,7 +936,7 @@ async function main() {
   console.log('\n✅ Seed concluído com sucesso!');
   console.log('   Usuários criados:', USERS.length);
   console.log('   Login de teste: ana@skillex.com / senha123 (admin)');
-  console.log('   Outros: bruno@skillex.com, carla@skillex.com ... (senha: senha123)\n');
+  console.log('   Outros: bruno@skillex.com, carlos@skillex.com ... (senha: senha123)\n');
 }
 
 main()

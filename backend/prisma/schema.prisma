@@ -28,10 +28,11 @@ model User {
   passwordHash String
   role         String  @default("USER") // USER | ADMIN
 
-  avatarUrl String?
-  bio       String?
-  city      String?
-  state     String?
+  avatarUrl    String?
+  feedCoverUrl String? // foto grande exibida no card do feed/perfil
+  bio          String?
+  city         String?
+  state        String?
 
   onboardingCompleted Boolean  @default(false)
   lastActiveAt        DateTime @default(now())
@@ -62,6 +63,7 @@ model User {
   reportsSubmitted    Report[]             @relation("ReportsSubmitted")
   reportsReceived     Report[]             @relation("ReportsReceived")
   reportsResolved     Report[]             @relation("ReportsResolved")
+  whiteboardStrokes   WhiteboardStroke[]
 
   @@map("users")
 }
@@ -239,6 +241,7 @@ model ExchangeRequest {
   messages ChatMessage[]
   events   ExchangeRequestEvent[]
   reports  Report[]
+  whiteboardStrokes WhiteboardStroke[]
 
   @@map("exchange_requests")
 }
@@ -414,4 +417,29 @@ model ChatMessage {
   createdAt DateTime @default(now())
 
   @@map("chat_messages")
+}
+
+// ----------------------------------------------------------------------------
+//  QUADRO COLABORATIVO — traços desenhados na sala de aula online
+//  tool: PEN | ERASER | LINE | RECT | ELLIPSE | TEXT
+//  points: JSON com array de [x, y] normalizados (0–1) para resistir a resize
+// ----------------------------------------------------------------------------
+model WhiteboardStroke {
+  id        String          @id @default(cuid())
+  requestId String
+  request   ExchangeRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User            @relation(fields: [authorId], references: [id])
+
+  tool      String
+  color     String
+  size      Int
+  points    String
+  text      String?
+  pageIndex Int      @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([requestId, createdAt])
+  @@map("whiteboard_strokes")
 }
