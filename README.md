@@ -48,13 +48,19 @@ habilidade compatível pode pagar a aula com a **moeda interna (SkillCoins)**.
 cd backend
 npm install
 npm run db:setup     # cria banco, aplica migrations e popula com dados fictícios
-npm run dev          # API em http://localhost:3333
+npm run dev          # API exposta no IP da máquina, porta 3333
 
 # 2. Frontend (em outro terminal)
 cd frontend
 npm install
-npm run dev          # App em http://localhost:5173
+npm run dev          # App exposto no IP da máquina, porta 5173
 ```
+
+> O endereço exato é detectado automaticamente: `npm run dev` (em qualquer
+> dos dois) executa `scripts/setup-env.cjs` antes, descobre o IP LAN da
+> máquina e grava em `.env` (e em `frontend/.env.local`). O backend imprime
+> `http://<IP-detectado>:3333` no boot — use esse endereço.
+> Para forçar um IP específico: `HOST_IP=10.0.0.42 npm run dev`.
 
 > Instruções completas de instalação, contas de teste e detalhes de cada módulo estão em [`docs/`](docs/).
 

@@ -61,6 +61,16 @@ ensure_env_file() {
     ok "Arquivo .env criado a partir de .env.example"
   fi
 
+  # Detecta o IP da máquina e preenche HOST_IP, CLIENT_URL, JITSI_* no .env.
+  # Roda sempre — assim, trocar de rede (Wi-Fi diferente) já reflete sem
+  # editar nada à mão.
+  if command -v node >/dev/null 2>&1; then
+    log "Detectando IP da máquina..."
+    node "$SCRIPT_DIR/setup-env.cjs"
+  else
+    warn "node não encontrado — pulei detecção automática de IP. Preencha HOST_IP/CLIENT_URL/JITSI_* manualmente no .env"
+  fi
+
   if ! command -v openssl >/dev/null 2>&1; then
     warn "openssl não encontrado — edite .env e gere segredos manualmente para todos os CHANGE-ME"
     return
@@ -194,11 +204,19 @@ wait_for_backend() {
 
 # ─── Imprime URLs de acesso ──────────────────────────────────────────────────
 print_urls() {
+  # Lê o HOST_IP gravado pelo setup-env (fonte única de verdade).
+  local host_ip=""
+  if [ -f .env ]; then
+    host_ip="$(grep -E '^HOST_IP=' .env | head -n1 | cut -d= -f2-)"
+  fi
+  [ -z "$host_ip" ] && host_ip="<IP-da-maquina>"
+
   echo
   ok "Stack pronta!"
-  printf "  ${C_GREEN}Aplicação:${C_OFF}   http://localhost\n"
-  printf "  ${C_GREEN}API:${C_OFF}         http://localhost:3333\n"
-  printf "  ${C_GREEN}Healthcheck:${C_OFF} http://localhost:3333/health\n"
+  printf "  ${C_GREEN}Aplicação:${C_OFF}   http://%s\n"        "$host_ip"
+  printf "  ${C_GREEN}API:${C_OFF}         http://%s:3333\n"   "$host_ip"
+  printf "  ${C_GREEN}Healthcheck:${C_OFF} http://%s:3333/health\n" "$host_ip"
+  printf "  ${C_GREEN}Jitsi:${C_OFF}       http://%s:8000\n"   "$host_ip"
   echo
   printf "${C_DIM}  Logs:   ./scripts/deploy.sh logs${C_OFF}\n"
   printf "${C_DIM}  Down:   ./scripts/deploy.sh down${C_OFF}\n"

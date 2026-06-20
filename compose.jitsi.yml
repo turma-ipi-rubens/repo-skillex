@@ -3,15 +3,15 @@
 # =============================================================================
 #  Subir junto com o sistema principal:
 #    cp .env.example .env                 # se ainda não existir
+#    node scripts/setup-env.cjs           # detecta IP da máquina, preenche .env
 #    # preencha os 4 segredos Jitsi (ou rode: ./scripts/deploy.sh up — gera tudo)
 #    docker compose -f docker-compose.yml -f compose.jitsi.yml up --build
 #
 #  Antes de subir pela 1ª vez:
-#    - Adicione `127.0.0.1 jitsi.localhost` no hosts do sistema
 #    - Gere segredos:  openssl rand -hex 32 (um por *_PASSWORD/*_SECRET)
 #
 #  Backend e Compose lêem o MESMO .env na raiz — não há `.env.jitsi` separado.
-#  Acesso direto à instância (smoke test): http://jitsi.localhost:8000
+#  Acesso direto à instância (smoke test): http://<IP-da-maquina>:8000
 # =============================================================================
 
 services:
@@ -35,23 +35,23 @@ services:
       JWT_APP_SECRET: ${JITSI_APP_SECRET}
       JWT_ACCEPTED_ISSUERS: ${JITSI_APP_ID:-skillex}
       JWT_ACCEPTED_AUDIENCES: ${JITSI_APP_ID:-skillex}
-      PUBLIC_URL: ${JITSI_PUBLIC_URL:-http://jitsi.localhost:8000}
-      XMPP_DOMAIN: ${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      PUBLIC_URL: "${JITSI_PUBLIC_URL:?defina JITSI_PUBLIC_URL no .env (rode node scripts/setup-env.cjs)}"
+      XMPP_DOMAIN: "${JITSI_XMPP_DOMAIN:?defina JITSI_XMPP_DOMAIN no .env (rode node scripts/setup-env.cjs)}"
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN}
       XMPP_BOSH_URL_BASE: http://prosody:5280
-      XMPP_GUEST_DOMAIN: guest.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_GUEST_DOMAIN: guest.${JITSI_XMPP_DOMAIN}
+      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN}
+      XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN}
       TZ: ${TZ:-America/Sao_Paulo}
       # URLs de sinalização DESABILITADAS / RELATIVIZADAS em dev HTTP:
       # ----------------------------------------------------------------------
       # A imagem `jitsi/web:stable-9779` concatena `PUBLIC_URL_DOMAIN` direto
       # depois de `https://` / `wss://` ao montar `config.bosh` e
-      # `config.websocket`, sem normalizar o protocolo. Como nosso
-      # PUBLIC_URL é `http://jitsi.localhost:8000`, o config.js renderizado
-      # vira algo como:
-      #   config.bosh      = 'https://http://jitsi.localhost:8000/http-bind';
-      #   config.websocket = 'wss://http://jitsi.localhost:8000/xmpp-websocket';
+      # `config.websocket`, sem normalizar o protocolo. Como nosso PUBLIC_URL
+      # é HTTP simples (ex.: `http://192.168.1.42:8000`), o config.js
+      # renderizado vira algo como:
+      #   config.bosh      = 'https://http://192.168.1.42:8000/http-bind';
+      #   config.websocket = 'wss://http://192.168.1.42:8000/xmpp-websocket';
       # Ambas inválidas — o iframe carrega mas o cliente nunca conecta no
       # XMPP, então a sala fica em "Connecting…" indefinidamente.
       #
@@ -90,12 +90,12 @@ services:
       JWT_AUTH_TYPE: token
       GLOBAL_MODULES: ""
       GLOBAL_CONFIG: ""
-      XMPP_DOMAIN: ${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_GUEST_DOMAIN: guest.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_DOMAIN: "${JITSI_XMPP_DOMAIN:?defina JITSI_XMPP_DOMAIN no .env (rode node scripts/setup-env.cjs)}"
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN}
+      XMPP_GUEST_DOMAIN: guest.${JITSI_XMPP_DOMAIN}
+      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN}
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN}
+      XMPP_RECORDER_DOMAIN: recorder.${JITSI_XMPP_DOMAIN}
       XMPP_MODULES: ""
       XMPP_MUC_MODULES: ""
       XMPP_INTERNAL_MUC_MODULES: ""
@@ -116,10 +116,10 @@ services:
     environment:
       AUTH_TYPE: jwt
       ENABLE_AUTH: 1
-      XMPP_DOMAIN: ${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      XMPP_DOMAIN: "${JITSI_XMPP_DOMAIN:?defina JITSI_XMPP_DOMAIN no .env (rode node scripts/setup-env.cjs)}"
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN}
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN}
+      XMPP_MUC_DOMAIN: muc.${JITSI_XMPP_DOMAIN}
       XMPP_SERVER: prosody
       JICOFO_COMPONENT_SECRET: ${JITSI_JICOFO_COMPONENT_SECRET}
       JICOFO_AUTH_USER: focus
@@ -139,9 +139,9 @@ services:
     volumes:
       - jitsi_jvb_config:/config
     environment:
-      DOCKER_HOST_ADDRESS: ${JITSI_DOCKER_HOST_ADDRESS:-127.0.0.1}
-      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
-      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN:-jitsi.localhost}
+      DOCKER_HOST_ADDRESS: "${JITSI_DOCKER_HOST_ADDRESS:?defina JITSI_DOCKER_HOST_ADDRESS no .env (rode node scripts/setup-env.cjs)}"
+      XMPP_AUTH_DOMAIN: auth.${JITSI_XMPP_DOMAIN}
+      XMPP_INTERNAL_MUC_DOMAIN: internal-muc.${JITSI_XMPP_DOMAIN}
       XMPP_SERVER: prosody
       JVB_AUTH_USER: jvb
       JVB_AUTH_PASSWORD: ${JITSI_JVB_AUTH_PASSWORD}

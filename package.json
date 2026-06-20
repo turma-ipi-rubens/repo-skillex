@@ -4,6 +4,8 @@
   "private": true,
   "description": "Testes end-to-end (Playwright) da plataforma SkillEx",
   "scripts": {
+    "setup-env": "node scripts/setup-env.cjs",
+    "detect-ip": "node scripts/detect-host-ip.cjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",

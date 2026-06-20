@@ -20,11 +20,15 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
   maxUploadSizeMb: Number(process.env.MAX_UPLOAD_SIZE_MB ?? 5),
-  clientUrl: process.env.CLIENT_URL ?? 'http://localhost:5173',
+  // CLIENT_URL é o IP da máquina detectado por scripts/setup-env.cjs.
+  // O fallback `http://localhost:5173` existe APENAS para testes Vitest
+  // (que rodam in-process e não chamam o setup-env).
+  clientUrl: process.env.CLIENT_URL || 'http://localhost:5173',
   isDev: (process.env.NODE_ENV ?? 'development') === 'development',
   // Jitsi self-hosted: o domínio é apenas a identidade da instância (também
   // serve como `sub` do JWT). O endpoint só emite token se APP_SECRET existir.
-  jitsiDomain: process.env.JITSI_DOMAIN ?? 'jitsi.localhost:8000',
+  // Fallback usado apenas em ambiente de teste — em runtime real, é o IP.
+  jitsiDomain: process.env.JITSI_DOMAIN || 'jitsi.localhost:8000',
   jitsiAppId: process.env.JITSI_APP_ID ?? 'skillex',
   jitsiAppSecret: process.env.JITSI_APP_SECRET ?? '',
   // Rate limits — defaults sãos os mesmos de antes; o env permite afrouxar em

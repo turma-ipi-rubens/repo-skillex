@@ -2,10 +2,13 @@
 const { chromium } = require('playwright');
 const path = require('path');
 const fs = require('fs');
+const { detectHostIp } = require('./detect-host-ip.cjs');
 
 const OUT = path.resolve(__dirname, '..', 'screenshots');
 fs.mkdirSync(OUT, { recursive: true });
-const BASE = 'http://localhost:5173';
+// Usa o IP da máquina (mesmo do .env / Vite). Sobrescreva com SHOT_BASE_URL
+// se precisar bater em outro host (ex.: build remoto).
+const BASE = process.env.SHOT_BASE_URL || `http://${detectHostIp()}:5173`;
 
 async function settle(page, ms = 900) {
   try { await page.waitForLoadState('networkidle', { timeout: 8000 }); } catch {}

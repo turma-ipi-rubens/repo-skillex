@@ -4,6 +4,7 @@
   "description": "API REST da plataforma SkillEx — troca de habilidades",
   "main": "dist/server.js",
   "scripts": {
+    "predev": "node ../scripts/setup-env.cjs",
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Interface SPA da plataforma SkillEx (React + Vite + TypeScript + SCSS)",
   "scripts": {
+    "predev": "node ../scripts/setup-env.cjs",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
