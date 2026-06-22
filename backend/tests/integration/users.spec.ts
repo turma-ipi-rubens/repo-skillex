@@ -149,6 +149,25 @@ describe('POST /api/users/me/avatar', () => {
   });
 });
 
+describe('POST /api/users/me/feed-cover', () => {
+  it('aceita uma imagem válida e grava a URL da capa do feed', async () => {
+    const { token } = await makeUser();
+    const res = await api
+      .post('/api/users/me/feed-cover')
+      .set('Authorization', bearer(token))
+      .attach('cover', PNG_1x1, { filename: 'cover.png', contentType: 'image/png' });
+    expect(res.status).toBe(200);
+    expect(res.body.user.feedCoverUrl).toMatch(/^\/uploads\//);
+    uploadedFiles.push(res.body.user.feedCoverUrl.replace('/uploads/', ''));
+  });
+
+  it('rejeita requisição sem arquivo (400)', async () => {
+    const { token } = await makeUser();
+    const res = await api.post('/api/users/me/feed-cover').set('Authorization', bearer(token));
+    expect(res.status).toBe(400);
+  });
+});
+
 describe('GET /api/users/:id (perfil público)', () => {
   it('retorna o próprio perfil (isOwnProfile, sem match)', async () => {
     const { token, user } = await makeUser({ onboardingCompleted: true });
@@ -384,6 +403,18 @@ describe('GET /api/users (busca avançada)', () => {
     const maxIds = onlyMax.body.items.map((u: any) => u.id);
     expect(maxIds).toContain(child.user.id); // 10 anos passa só com máximo
     expect(maxIds).not.toContain(old.user.id);
+  });
+
+  it('ordena por relevância textual e desempata por compatibilidade', async () => {
+    // q="Node" casa EXATAMENTE com o nome da habilidade ensinada por vários
+    // candidatos → relevância 1 para todos (cobre o atalho de match exato e o
+    // desempate por score quando as relevâncias empatam).
+    const { me, full, old } = await buildSearchWorld();
+    const res = await api.get('/api/users?q=Node').set('Authorization', bearer(me.token));
+    expect(res.status).toBe(200);
+    const ids = res.body.items.map((u: any) => u.id);
+    expect(ids).toContain(full.user.id);
+    expect(ids).toContain(old.user.id);
   });
 
   it('pagina a busca (hasMore)', async () => {

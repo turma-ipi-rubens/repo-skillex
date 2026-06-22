@@ -16,5 +16,10 @@ adminRoutes.patch('/categories/:id', asyncHandler(adminController.updateCategory
 adminRoutes.delete('/categories/:id', asyncHandler(adminController.deleteCategory));
 
 adminRoutes.post('/skills', asyncHandler(adminController.createSkill));
+adminRoutes.post('/skills/merge', asyncHandler(adminController.mergeSkills));
+adminRoutes.get('/skills/duplicates', asyncHandler(adminController.listDuplicateSkills));
 adminRoutes.patch('/skills/:id', asyncHandler(adminController.updateSkill));
 adminRoutes.delete('/skills/:id', asyncHandler(adminController.deleteSkill));
+
+adminRoutes.get('/audit-logs', asyncHandler(adminController.listAudit));
+adminRoutes.get('/audit-logs/meta', asyncHandler(adminController.auditMeta));

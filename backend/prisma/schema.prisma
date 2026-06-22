@@ -64,6 +64,7 @@ model User {
   reportsReceived     Report[]             @relation("ReportsReceived")
   reportsResolved     Report[]             @relation("ReportsResolved")
   whiteboardStrokes   WhiteboardStroke[]
+  auditLogs           AuditLog[]           @relation("AuditActor")
 
   @@map("users")
 }
@@ -399,6 +400,38 @@ model Report {
   updatedAt DateTime @updatedAt
 
   @@map("reports")
+}
+
+// ----------------------------------------------------------------------------
+//  REGISTRO DE AUDITORIA — trilha de ações relevantes da plataforma.
+//  category: ADMIN | SECURITY | CONTENT
+//  O ator é opcional (ações do sistema) e seus dados são "fotografados"
+//  (actorName/actorEmail) para sobreviver à exclusão/anonimização da conta.
+//  metadata guarda um JSON livre (estado antes/depois, ids relacionados).
+// ----------------------------------------------------------------------------
+model AuditLog {
+  id         String  @id @default(cuid())
+  actorId    String?
+  actor      User?   @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+  actorName  String? // snapshot do nome no momento da ação
+  actorEmail String? // snapshot do e-mail no momento da ação
+
+  action     String  // ex.: USER_DEACTIVATED, SKILL_CREATED, AUTH_LOGIN...
+  category   String  // ADMIN | SECURITY | CONTENT
+  entityType String? // User | Skill | Category | Report | ExchangeRequest | Review | Auth
+  entityId   String?
+  summary    String? // texto legível em pt-BR
+  metadata   String? // JSON com detalhes adicionais
+  ip         String?
+  userAgent  String?
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+  @@index([category])
+  @@index([actorId])
+  @@map("audit_logs")
 }
 
 // ----------------------------------------------------------------------------

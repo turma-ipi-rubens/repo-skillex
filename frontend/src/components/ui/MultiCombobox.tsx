@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Icon } from './Icon';
 import type { ComboboxOption } from './Combobox';
+import { fuzzyQueryScore } from '../../utils/fuzzy';
 
 interface Props {
   options: ComboboxOption[];
@@ -48,7 +49,15 @@ export function MultiCombobox({
     const q = normalize(query.trim());
     const base = options.filter((o) => !selectedSet.has(o.value));
     if (!q) return base.slice(0, 100);
-    return base.filter((o) => normalize(o.label).includes(q)).slice(0, 100);
+    const substring = base.filter((o) => normalize(o.label).includes(q));
+    if (substring.length > 0) return substring.slice(0, 100);
+    // Fallback aproximado (acento/caixa/typo).
+    return base
+      .map((o) => ({ o, score: fuzzyQueryScore(o.label, query.trim()) }))
+      .filter((r) => r.score >= 0.6)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 100)
+      .map((r) => r.o);
   }, [options, selectedSet, query]);
 
   const labelByValue = useMemo(() => {
@@ -60,8 +69,9 @@ export function MultiCombobox({
   const reachedMax = !!max && values.length >= max;
 
   const add = (opt: ComboboxOption) => {
-    /* v8 ignore next */
+    /* v8 ignore start -- input desabilitado ao atingir o limite; guarda defensiva */
     if (reachedMax) return;
+    /* v8 ignore stop */
     onChange([...values, opt.value]);
     setQuery('');
     setActiveIdx(0);

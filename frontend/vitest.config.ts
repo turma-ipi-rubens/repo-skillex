@@ -20,6 +20,10 @@ export default defineConfig({
         'src/hooks/**/*.ts',
         'src/components/**/*.{ts,tsx}',
       ],
+      // Componentes de "view" pesados (SDK externo do Jitsi / desenho em canvas
+      // 2D) — como as páginas, são validados pelos testes E2E (Playwright), não
+      // por testes unitários (mocks seriam frágeis e de baixo valor).
+      exclude: ['src/components/VideoCall.tsx', 'src/components/Whiteboard.tsx'],
       reporter: ['text', 'text-summary', 'html', 'lcov'],
       thresholds: {
         statements: 100,

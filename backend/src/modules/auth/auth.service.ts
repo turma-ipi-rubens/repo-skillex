@@ -193,5 +193,7 @@ export async function resetPassword(input: ResetPasswordInput) {
       data: { usedAt: new Date() },
     }),
   ]);
-  return { success: true };
+  // userId/email retornados apenas para a auditoria — o controller os remove
+  // antes de responder (não vazam na resposta HTTP).
+  return { success: true, userId: record.userId, email: record.user.email };
 }

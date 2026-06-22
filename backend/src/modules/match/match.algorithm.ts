@@ -1,4 +1,5 @@
-import { MATCH_WEIGHTS } from '../../utils/constants';
+import { MATCH_WEIGHTS, FUZZY_MATCH_THRESHOLD } from '../../utils/constants';
+import { isFuzzyMatch } from '../../utils/fuzzy';
 
 /**
  * ============================================================================
@@ -24,10 +25,25 @@ import { MATCH_WEIGHTS } from '../../utils/constants';
  * ============================================================================
  */
 
+/** Habilidade referenciada no match: id do catálogo + nome para o fuzzy. */
+export interface SkillRef {
+  id: string;
+  name: string;
+}
+
 export interface MatchUser {
   id: string;
   teachSkillIds: string[];
   learnSkillIds: string[];
+  /**
+   * Versões com NOME das habilidades (opcionais). Quando presentes, o match
+   * passa a considerar equivalentes habilidades de nomes parecidos — ex.:
+   * "Programação JavaScript" ↔ "JavaScript" — mesmo com ids diferentes no
+   * catálogo. Sem os nomes, o cálculo cai para interseção exata de ids
+   * (mantendo compatibilidade com chamadas/testes antigos).
+   */
+  teachSkills?: SkillRef[];
+  learnSkills?: SkillRef[];
   city?: string | null;
   state?: string | null;
   languages?: string[];
@@ -86,16 +102,45 @@ function scoreActivity(date: Date | null | undefined, weight: number): number {
   return 0;
 }
 
+/** Normaliza um usuário para listas de habilidades com id + nome. */
+function teachRefs(u: MatchUser): SkillRef[] {
+  if (u.teachSkills && u.teachSkills.length) return u.teachSkills;
+  return u.teachSkillIds.map((id) => ({ id, name: '' }));
+}
+function learnRefs(u: MatchUser): SkillRef[] {
+  if (u.learnSkills && u.learnSkills.length) return u.learnSkills;
+  return u.learnSkillIds.map((id) => ({ id, name: '' }));
+}
+
+/**
+ * Duas habilidades são equivalentes se têm o mesmo id no catálogo OU, quando
+ * há nomes, se os nomes são "aproximadamente iguais" (tolerando acento, caixa,
+ * erro de digitação e variações como "Programação X" ⊇ "X").
+ */
+function skillsEquivalent(x: SkillRef, y: SkillRef): boolean {
+  if (x.id === y.id) return true;
+  if (!x.name || !y.name) return false;
+  return isFuzzyMatch(x.name, y.name, FUZZY_MATCH_THRESHOLD);
+}
+
 /**
  * Calcula o match entre o usuário A (navegando) e o candidato B.
  */
 export function calculateMatch(a: MatchUser, b: MatchUser): MatchResult {
-  const aLearn = new Set(a.learnSkillIds);
-  const bLearn = new Set(b.learnSkillIds);
+  const aLearn = learnRefs(a);
+  const bLearn = learnRefs(b);
+  const aTeach = teachRefs(a);
+  const bTeach = teachRefs(b);
 
-  // d = B ensina o que A quer aprender | r = A ensina o que B quer aprender
-  const skillsToLearn = b.teachSkillIds.filter((id) => aLearn.has(id));
-  const skillsToTeach = a.teachSkillIds.filter((id) => bLearn.has(id));
+  // d = B ensina o que A quer aprender | r = A ensina o que B quer aprender.
+  // Retornamos sempre os ids (de B e de A) para que a exibição dos nomes
+  // continue funcionando via os vínculos do banco (namesFromLinks).
+  const skillsToLearn = bTeach
+    .filter((t) => aLearn.some((l) => skillsEquivalent(t, l)))
+    .map((t) => t.id);
+  const skillsToTeach = aTeach
+    .filter((t) => bLearn.some((l) => skillsEquivalent(t, l)))
+    .map((t) => t.id);
   const d = skillsToLearn.length;
   const r = skillsToTeach.length;
   const reciprocal = d > 0 && r > 0;
@@ -104,7 +149,7 @@ export function calculateMatch(a: MatchUser, b: MatchUser): MatchResult {
   const reciprocity = reciprocal ? MATCH_WEIGHTS.reciprocity : 0;
 
   // 2. Compatibilidade de habilidade — cobertura dos objetivos de A
-  const coverage = aLearn.size > 0 ? Math.min(1, d / aLearn.size) : 0;
+  const coverage = aLearn.length > 0 ? Math.min(1, d / aLearn.length) : 0;
   const skillMatch = Math.round(MATCH_WEIGHTS.skillMatch * coverage);
 
   // 3. Localização

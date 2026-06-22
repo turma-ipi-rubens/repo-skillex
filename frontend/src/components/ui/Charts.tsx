@@ -73,7 +73,8 @@ export function LineChart({ series, height = 220 }: { series: LineSeries[]; heig
   const labels = series[0]?.data.map((d) => d.date) ?? [];
   const N = labels.length;
   const maxVal = Math.max(1, ...series.flatMap((s) => s.data.map((d) => d.value)));
-  const niceMax = Math.ceil(maxVal / 5) * 5 || 5;
+  // maxVal é sempre ≥ 1, então o produto arredondado é sempre ≥ 5.
+  const niceMax = Math.ceil(maxVal / 5) * 5;
 
   const xAt = (i: number) => padL + (i * (w - padL - padR)) / Math.max(N - 1, 1);
   const yAt = (v: number) => padT + (1 - v / niceMax) * (h - padT - padB);
@@ -134,7 +135,7 @@ export function LineChart({ series, height = 220 }: { series: LineSeries[]; heig
         {/* Labels X */}
         {tickIndices.map((i) => (
           <text key={i} x={xAt(i)} y={h - 8} fontSize={9} textAnchor="middle" fill="var(--text-muted)">
-            {(labels[i] ?? '').slice(5)}
+            {labels[i].slice(5)}
           </text>
         ))}
 

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Avatar } from '../components/ui/Avatar';
 import { BarChart, DonutChart, LineChart, Sparkline, colorAt } from '../components/ui/Charts';
+import { Combobox } from '../components/ui/Combobox';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Icon } from '../components/ui/Icon';
 import { Sheet } from '../components/ui/Sheet';
@@ -11,7 +12,7 @@ import { useToast } from '../contexts/ToastContext';
 import { api, ApiError } from '../services/api';
 import { downloadCSV, printReport } from '../utils/exports';
 
-type Tab = 'dashboard' | 'users' | 'categories' | 'skills' | 'reports' | 'system';
+type Tab = 'dashboard' | 'users' | 'categories' | 'skills' | 'reports' | 'audit' | 'system';
 
 // ---------------------------------------------------------------------------
 //  Dicionários de tradução de status / tipos
@@ -51,6 +52,52 @@ const REPORT_STATUS_COLORS: Record<string, string> = {
   RESOLVED: 'var(--success)',
   DISMISSED: 'var(--surface-3)',
 };
+
+// ---------------------------------------------------------------------------
+//  Auditoria — rótulos e cores
+// ---------------------------------------------------------------------------
+const AUDIT_CATEGORY_LABELS: Record<string, string> = {
+  ADMIN: 'Administração',
+  SECURITY: 'Segurança',
+  CONTENT: 'Conteúdo',
+};
+
+const AUDIT_CATEGORY_COLORS: Record<string, string> = {
+  ADMIN: 'var(--color-primary)',
+  SECURITY: '#ef4444',
+  CONTENT: '#0ea5e9',
+};
+
+const AUDIT_ACTION_LABELS: Record<string, string> = {
+  USER_ACTIVATED: 'Conta reativada',
+  USER_DEACTIVATED: 'Conta desativada',
+  CATEGORY_CREATED: 'Categoria criada',
+  CATEGORY_UPDATED: 'Categoria editada',
+  CATEGORY_DELETED: 'Categoria excluída',
+  SKILL_CREATED: 'Habilidade criada',
+  SKILL_UPDATED: 'Habilidade editada',
+  SKILL_DELETED: 'Habilidade excluída',
+  SKILLS_MERGED: 'Habilidades mescladas',
+  REPORT_MODERATED: 'Denúncia moderada',
+  AUTH_REGISTER: 'Cadastro de conta',
+  AUTH_LOGIN: 'Login realizado',
+  AUTH_LOGIN_FAILED: 'Login malsucedido',
+  PASSWORD_CHANGED: 'Senha alterada',
+  PASSWORD_RESET_REQUESTED: 'Recuperação solicitada',
+  PASSWORD_RESET_COMPLETED: 'Senha redefinida',
+  ACCOUNT_DELETED: 'Conta excluída (LGPD)',
+  REQUEST_CREATED: 'Solicitação criada',
+  REQUEST_ACCEPTED: 'Solicitação aceita',
+  REQUEST_REJECTED: 'Solicitação recusada',
+  REQUEST_CANCELLED: 'Solicitação cancelada',
+  REQUEST_COMPLETED: 'Solicitação concluída',
+  REVIEW_CREATED: 'Avaliação registrada',
+  REPORT_CREATED: 'Denúncia registrada',
+};
+
+function auditActionLabel(action: string): string {
+  return AUDIT_ACTION_LABELS[action] ?? action;
+}
 
 function errorMessage(err: unknown, fallback: string): string {
   return err instanceof ApiError ? err.message : fallback;
@@ -1020,6 +1067,8 @@ function SkillsTab() {
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<null | { id?: string; values?: any }>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+  const [duplicates, setDuplicates] = useState<any[]>([]);
+  const [merge, setMerge] = useState<null | { fromId: string; intoId: string }>(null);
 
   const load = useCallback(async (query: string) => {
     setSkills(null);
@@ -1036,9 +1085,21 @@ function SkillsTab() {
     }
   }, []);
 
+  const loadDuplicates = useCallback(async () => {
+    try {
+      setDuplicates((await api.get('/admin/skills/duplicates')).groups ?? []);
+    } catch {
+      setDuplicates([]);
+    }
+  }, []);
+
   useEffect(() => {
     load(q);
   }, [load, q]);
+
+  useEffect(() => {
+    loadDuplicates();
+  }, [loadDuplicates]);
 
   const filtered = useMemo(() => {
     if (!skills) return null;
@@ -1089,6 +1150,41 @@ function SkillsTab() {
     }
   };
 
+  const skillOptions = useMemo(
+    () => (skills ?? []).map((s) => ({ value: s.id, label: s.name })),
+    [skills],
+  );
+
+  const mergeName = (id: string) => skillOptions.find((o) => o.value === id)?.label ?? id;
+
+  const submitMerge = async () => {
+    if (!merge?.fromId || !merge?.intoId) {
+      toast('Escolha as duas habilidades', 'error');
+      return;
+    }
+    if (merge.fromId === merge.intoId) {
+      toast('Selecione habilidades diferentes', 'error');
+      return;
+    }
+    const ok = await confirm(
+      `Mesclar "${mergeName(merge.fromId)}" em "${mergeName(merge.intoId)}"? Todos os vínculos serão movidos e a duplicata removida. Esta ação não pode ser desfeita.`,
+      'Mesclar',
+    );
+    if (!ok) return;
+    try {
+      const r = await api.post('/admin/skills/merge', {
+        fromId: merge.fromId,
+        intoId: merge.intoId,
+      });
+      toast(`Mesclado em "${r.into.name}"`, 'success');
+      setMerge(null);
+      load(q);
+      loadDuplicates();
+    } catch (err) {
+      toast(errorMessage(err, 'Erro ao mesclar habilidades'), 'error');
+    }
+  };
+
   const exportCSV = () => {
     if (!filtered?.length) return;
     downloadCSV(
@@ -1132,10 +1228,66 @@ function SkillsTab() {
         >
           <Icon name="plus-lg" /> Nova
         </button>
+        <button
+          className="btn btn--secondary"
+          id="skill-merge"
+          disabled={!skills?.length}
+          onClick={() => setMerge({ fromId: '', intoId: '' })}
+        >
+          <Icon name="union" /> Mesclar
+        </button>
         <button className="btn btn--secondary btn--sm" onClick={exportCSV} disabled={!filtered?.length}>
           <Icon name="filetype-csv" /> CSV
         </button>
       </div>
+
+      {duplicates.length > 0 && (
+        <div className="card" style={{ padding: 12, marginBottom: 12 }}>
+          <div className="row gap-8" style={{ alignItems: 'center', marginBottom: 8 }}>
+            <Icon name="exclamation-circle" />
+            <strong style={{ fontSize: '.9rem' }}>Possíveis duplicatas</strong>
+            <span className="muted" style={{ fontSize: '.78rem' }}>
+              habilidades com nomes muito parecidos
+            </span>
+          </div>
+          {duplicates.map((group: any[], gi: number) => {
+            // Sugerimos manter a de maior demanda (oferta + procura) como destino.
+            const sorted = [...group].sort(
+              (a, b) => b.teachersCount + b.learnersCount - (a.teachersCount + a.learnersCount),
+            );
+            const into = sorted[0];
+            return (
+              <div
+                key={gi}
+                className="row gap-8"
+                style={{ alignItems: 'center', flexWrap: 'wrap', padding: '6px 0', borderTop: gi ? '1px solid var(--surface-3)' : 'none' }}
+              >
+                <div className="full" style={{ minWidth: 0 }}>
+                  {group.map((s: any) => (
+                    <span key={s.id} className="skill-badge" style={{ marginRight: 6 }}>
+                      {s.name}
+                      <span className="muted" style={{ marginLeft: 4 }}>
+                        ({s.teachersCount + s.learnersCount})
+                      </span>
+                    </span>
+                  ))}
+                </div>
+                <button
+                  className="btn btn--secondary btn--sm"
+                  onClick={() =>
+                    setMerge({
+                      fromId: sorted[sorted.length - 1].id,
+                      intoId: into.id,
+                    })
+                  }
+                >
+                  <Icon name="union" /> Mesclar
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
       <div id="skill-list">
         {error ? (
           <EmptyState icon="exclamation-triangle" title={error} subtitle="Tente novamente." />
@@ -1170,6 +1322,37 @@ function SkillsTab() {
       {editing && (
         <Sheet title={editing.id ? 'Editar habilidade' : 'Nova habilidade'} onClose={() => setEditing(null)}>
           <SkillForm categories={categories} values={editing.values} onSubmit={submitSkill} />
+        </Sheet>
+      )}
+
+      {merge && (
+        <Sheet title="Mesclar habilidades" onClose={() => setMerge(null)}>
+          <p className="muted" style={{ fontSize: '.85rem', marginTop: 0 }}>
+            Move todos os vínculos (quem ensina, quem aprende, solicitações, avaliações e
+            favoritos) da habilidade <strong>de origem</strong> para a <strong>de destino</strong> e
+            remove a duplicata. Útil para unir variantes como “Programação JavaScript” e “JavaScript”.
+          </p>
+          <div className="field">
+            <label className="field__label">Origem (será removida)</label>
+            <Combobox
+              options={skillOptions}
+              value={merge.fromId}
+              onChange={(v) => setMerge((m) => (m ? { ...m, fromId: v } : m))}
+              placeholder="Habilidade duplicada"
+            />
+          </div>
+          <div className="field">
+            <label className="field__label">Destino (será mantida)</label>
+            <Combobox
+              options={skillOptions}
+              value={merge.intoId}
+              onChange={(v) => setMerge((m) => (m ? { ...m, intoId: v } : m))}
+              placeholder="Habilidade canônica"
+            />
+          </div>
+          <button className="btn btn--primary btn--block" onClick={submitMerge}>
+            <Icon name="union" /> Mesclar habilidades
+          </button>
         </Sheet>
       )}
     </>
@@ -1598,6 +1781,231 @@ function SystemTab({ goTo }: { goTo: (t: Tab) => void }) {
 }
 
 // ===========================================================================
+//  Aba: Auditoria (trilha de ações da plataforma)
+// ===========================================================================
+
+function AuditTab() {
+  const [filters, setFilters] = useState({ q: '', category: '', action: '', from: '', to: '' });
+  const [page, setPage] = useState(1);
+  const [res, setRes] = useState<any>(null);
+  const [meta, setMeta] = useState<{ actions: string[]; categories: string[] }>({
+    actions: [],
+    categories: [],
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (f: typeof filters, p: number) => {
+    setRes(null);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (f.q) params.set('q', f.q);
+      if (f.category) params.set('category', f.category);
+      if (f.action) params.set('action', f.action);
+      // Datas: o input date envia AAAA-MM-DD; convertemos para ISO de início/fim do dia.
+      if (f.from) params.set('from', new Date(`${f.from}T00:00:00`).toISOString());
+      if (f.to) params.set('to', new Date(`${f.to}T23:59:59`).toISOString());
+      params.set('page', String(p));
+      params.set('limit', '20');
+      setRes(await api.get(`/admin/audit-logs?${params.toString()}`));
+    } catch (err) {
+      setError(errorMessage(err, 'Erro ao carregar a auditoria'));
+    }
+  }, []);
+
+  useEffect(() => {
+    api
+      .get('/admin/audit-logs/meta')
+      .then(setMeta)
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    load(filters, page);
+  }, [load, filters, page]);
+
+  const onApply = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    setFilters({
+      q: String(data.get('q') || '').trim(),
+      category: String(data.get('category') || ''),
+      action: String(data.get('action') || ''),
+      from: String(data.get('from') || ''),
+      to: String(data.get('to') || ''),
+    });
+    setPage(1);
+  };
+
+  const exportCSV = () => {
+    if (!res?.items?.length) return;
+    downloadCSV(
+      'skillex-auditoria.csv',
+      res.items.map((l: any) => ({
+        data: formatDateTime(l.createdAt),
+        categoria: AUDIT_CATEGORY_LABELS[l.category] ?? l.category,
+        acao: auditActionLabel(l.action),
+        ator: l.actorName ?? 'Sistema',
+        email: l.actorEmail ?? '',
+        entidade: l.entityType ?? '',
+        entidade_id: l.entityId ?? '',
+        resumo: l.summary ?? '',
+        ip: l.ip ?? '',
+      })),
+    );
+  };
+
+  const exportPDF = () => {
+    if (!res?.items?.length) return;
+    printReport({
+      title: 'Auditoria — SkillEx',
+      subtitle: 'Trilha de ações da plataforma',
+      kpis: [
+        { label: 'Itens na página', value: res.items.length },
+        { label: 'Total', value: res.total },
+        { label: 'Página', value: res.page },
+      ],
+      sections: [
+        {
+          title: 'Eventos',
+          rows: res.items.map((l: any) => ({
+            data: formatDateTime(l.createdAt),
+            categoria: AUDIT_CATEGORY_LABELS[l.category] ?? l.category,
+            acao: auditActionLabel(l.action),
+            ator: l.actorName ?? 'Sistema',
+            resumo: l.summary ?? '',
+          })),
+          columns: [
+            { key: 'data', label: 'Data/hora' },
+            { key: 'categoria', label: 'Categoria' },
+            { key: 'acao', label: 'Ação' },
+            { key: 'ator', label: 'Ator' },
+            { key: 'resumo', label: 'Resumo' },
+          ],
+        },
+      ],
+    });
+  };
+
+  return (
+    <>
+      <form className="card" style={{ padding: 12, marginBottom: 12 }} onSubmit={onApply}>
+        <div className="row gap-8" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="field full" style={{ minWidth: 180, margin: 0 }}>
+            <label className="field__label">Busca</label>
+            <input className="input" name="q" placeholder="Resumo, ator, ação..." defaultValue={filters.q} />
+          </div>
+          <div className="field" style={{ minWidth: 150, margin: 0 }}>
+            <label className="field__label">Categoria</label>
+            <select className="input" name="category" defaultValue={filters.category}>
+              <option value="">Todas</option>
+              {meta.categories.map((c) => (
+                <option key={c} value={c}>
+                  {AUDIT_CATEGORY_LABELS[c] ?? c}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ minWidth: 170, margin: 0 }}>
+            <label className="field__label">Ação</label>
+            <select className="input" name="action" defaultValue={filters.action}>
+              <option value="">Todas</option>
+              {meta.actions.map((a) => (
+                <option key={a} value={a}>
+                  {auditActionLabel(a)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label className="field__label">De</label>
+            <input className="input" type="date" name="from" defaultValue={filters.from} />
+          </div>
+          <div className="field" style={{ margin: 0 }}>
+            <label className="field__label">Até</label>
+            <input className="input" type="date" name="to" defaultValue={filters.to} />
+          </div>
+          <button className="btn btn--primary" type="submit">
+            <Icon name="funnel" /> Filtrar
+          </button>
+        </div>
+      </form>
+
+      <div className="row gap-8" style={{ marginBottom: 12 }}>
+        {res && (
+          <p className="muted" style={{ fontSize: '.78rem', margin: 0, marginRight: 'auto' }}>
+            Mostrando {res.items.length} de {formatNumber(res.total)} • página {res.page}
+          </p>
+        )}
+        <button className="btn btn--secondary btn--sm" onClick={exportCSV} disabled={!res?.items?.length}>
+          <Icon name="filetype-csv" /> CSV
+        </button>
+        <button className="btn btn--primary btn--sm" onClick={exportPDF} disabled={!res?.items?.length}>
+          <Icon name="filetype-pdf" /> PDF
+        </button>
+      </div>
+
+      <div id="audit-list">
+        {error ? (
+          <EmptyState icon="exclamation-triangle" title={error} subtitle="Tente novamente." />
+        ) : !res ? (
+          <Spinner />
+        ) : !res.items.length ? (
+          <EmptyState icon="journal-text" title="Nenhum evento encontrado" subtitle="Ajuste os filtros." />
+        ) : (
+          <>
+            {res.items.map((l: any) => (
+              <div className="card" data-audit={l.id} key={l.id} style={{ marginBottom: 8, padding: 12 }}>
+                <div className="row-between" style={{ marginBottom: 4, gap: 8, flexWrap: 'wrap' }}>
+                  <div className="row gap-8" style={{ alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span
+                      className="skill-badge"
+                      style={{
+                        background: (AUDIT_CATEGORY_COLORS[l.category] ?? 'var(--surface-3)') + '22',
+                        color: AUDIT_CATEGORY_COLORS[l.category] ?? 'var(--text)',
+                      }}
+                    >
+                      {AUDIT_CATEGORY_LABELS[l.category] ?? l.category}
+                    </span>
+                    <strong style={{ fontSize: '.9rem' }}>{auditActionLabel(l.action)}</strong>
+                  </div>
+                  <span className="muted" style={{ fontSize: '.74rem' }}>
+                    {formatDateTime(l.createdAt)}
+                  </span>
+                </div>
+                {l.summary && <div style={{ fontSize: '.88rem' }}>{l.summary}</div>}
+                <div className="muted" style={{ fontSize: '.74rem', marginTop: 4 }}>
+                  <Icon name="person" /> {l.actorName ?? 'Sistema'}
+                  {l.actorEmail && ` (${l.actorEmail})`}
+                  {l.entityType && ` • ${l.entityType}`}
+                  {l.ip && ` • IP ${l.ip}`}
+                </div>
+              </div>
+            ))}
+            <div className="row gap-8" style={{ marginTop: 10, justifyContent: 'space-between' }}>
+              <button
+                className="btn btn--ghost btn--sm"
+                disabled={res.page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                <Icon name="chevron-left" /> Anterior
+              </button>
+              <button
+                className="btn btn--ghost btn--sm"
+                disabled={!res.hasMore}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Próxima <Icon name="chevron-right" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+// ===========================================================================
 //  Página principal
 // ===========================================================================
 
@@ -1607,6 +2015,7 @@ const TABS: Array<{ key: Tab; label: string; icon: string }> = [
   { key: 'categories', label: 'Categorias', icon: 'tags' },
   { key: 'skills', label: 'Habilidades', icon: 'tools' },
   { key: 'reports', label: 'Denúncias', icon: 'flag' },
+  { key: 'audit', label: 'Auditoria', icon: 'journal-text' },
   { key: 'system', label: 'Sistema', icon: 'gear' },
 ];
 
@@ -1635,6 +2044,7 @@ export function Admin() {
         {tab === 'categories' && <CategoriesTab />}
         {tab === 'skills' && <SkillsTab />}
         {tab === 'reports' && <ReportsTab />}
+        {tab === 'audit' && <AuditTab />}
         {tab === 'system' && <SystemTab goTo={setTab} />}
       </div>
     </>

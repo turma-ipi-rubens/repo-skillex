@@ -8,6 +8,8 @@ function user(overrides: Partial<MatchUser> = {}): MatchUser {
     id: overrides.id ?? 'x',
     teachSkillIds: overrides.teachSkillIds ?? [],
     learnSkillIds: overrides.learnSkillIds ?? [],
+    teachSkills: overrides.teachSkills,
+    learnSkills: overrides.learnSkills,
     city: overrides.city,
     state: overrides.state,
     languages: overrides.languages,
@@ -171,6 +173,53 @@ describe('calculateMatch — atividade recente', () => {
   });
   it('> 30 dias → zero', () => {
     expect(calculateMatch(user(), user({ lastActiveAt: days(60) })).breakdown.activity).toBe(0);
+  });
+});
+
+describe('calculateMatch — correspondência aproximada de habilidades (fuzzy)', () => {
+  it('casa habilidades de nomes parecidos com ids diferentes ("Programação JavaScript" ↔ "JavaScript")', () => {
+    // A quer aprender "JavaScript"; B ensina "Programação JavaScript" (id diferente).
+    const a = user({
+      teachSkillIds: ['py'],
+      learnSkillIds: ['js'],
+      teachSkills: [{ id: 'py', name: 'Python' }],
+      learnSkills: [{ id: 'js', name: 'JavaScript' }],
+    });
+    const b = user({
+      teachSkillIds: ['prog-js'],
+      learnSkillIds: ['py'],
+      teachSkills: [{ id: 'prog-js', name: 'Programação JavaScript' }],
+      learnSkills: [{ id: 'py', name: 'Python' }],
+    });
+    const r = calculateMatch(a, b);
+    expect(r.type).toBe('PERFECT');
+    expect(r.skillsToLearn).toEqual(['prog-js']); // retorna o id da skill de B
+    expect(r.skillsToTeach).toEqual(['py']);
+  });
+
+  it('tolera erro de digitação no nome da habilidade', () => {
+    const a = user({
+      learnSkillIds: ['js'],
+      learnSkills: [{ id: 'js', name: 'JavaScript' }],
+    });
+    const b = user({
+      teachSkillIds: ['js2'],
+      teachSkills: [{ id: 'js2', name: 'Javascrpit' }],
+    });
+    const r = calculateMatch(a, b);
+    expect(r.skillsToLearn).toEqual(['js2']);
+  });
+
+  it('não casa habilidades não relacionadas mesmo com nomes', () => {
+    const a = user({
+      learnSkillIds: ['js'],
+      learnSkills: [{ id: 'js', name: 'JavaScript' }],
+    });
+    const b = user({
+      teachSkillIds: ['vio'],
+      teachSkills: [{ id: 'vio', name: 'Violino' }],
+    });
+    expect(calculateMatch(a, b).skillsToLearn).toEqual([]);
   });
 });
 

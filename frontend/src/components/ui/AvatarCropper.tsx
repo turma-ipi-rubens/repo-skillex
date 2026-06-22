@@ -24,8 +24,9 @@ export function AvatarCropper({ src, onCancel, onConfirm, outputSize = 512 }: Pr
 
   const onImgLoad = () => {
     const img = imgRef.current;
-    /* v8 ignore next */
+    /* v8 ignore start -- ref sempre presente quando onLoad dispara */
     if (!img) return;
+    /* v8 ignore stop */
     const w = img.naturalWidth;
     const h = img.naturalHeight;
     setNatural({ w, h });
@@ -75,8 +76,9 @@ export function AvatarCropper({ src, onCancel, onConfirm, outputSize = 512 }: Pr
   useEffect(() => {
     // bloqueia o gesto padrão de pan no touch
     const stage = stageRef.current;
-    /* v8 ignore next */
+    /* v8 ignore start -- ref sempre presente no efeito de montagem */
     if (!stage) return;
+    /* v8 ignore stop */
     const prevent = (e: TouchEvent) => e.preventDefault();
     stage.addEventListener('touchmove', prevent, { passive: false });
     return () => stage.removeEventListener('touchmove', prevent);
@@ -91,8 +93,9 @@ export function AvatarCropper({ src, onCancel, onConfirm, outputSize = 512 }: Pr
       canvas.width = outputSize;
       canvas.height = outputSize;
       const ctx = canvas.getContext('2d');
-      /* v8 ignore next */
+      /* v8 ignore start -- canvas 2D sempre disponível no ambiente alvo */
       if (!ctx) throw new Error('Sem suporte a canvas');
+      /* v8 ignore stop */
       const ratio = outputSize / STAGE;
       // posição/escala no espaço de saída
       ctx.fillStyle = '#fff';

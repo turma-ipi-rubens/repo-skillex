@@ -57,6 +57,13 @@ describe('Avatar', () => {
     const { container } = render(<Avatar user={{ name: 'Ana ' }} />);
     expect(container.querySelector('.avatar')).toHaveTextContent('A');
   });
+  it('cai para as iniciais quando a imagem falha ao carregar (onError)', () => {
+    const { container } = render(<Avatar user={{ name: 'Ana Maria', avatarUrl: '/u/quebrada.png' }} />);
+    const img = container.querySelector('img') as HTMLImageElement;
+    fireEvent.error(img);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('.avatar')).toHaveTextContent('AM');
+  });
 });
 
 describe('Stars', () => {

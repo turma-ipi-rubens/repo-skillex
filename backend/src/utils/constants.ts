@@ -44,6 +44,16 @@ export const NOTIFICATION_TYPES = [
 /** Quantidade de moedas concedidas a novos usuários. */
 export const WELCOME_BONUS_COINS = 100;
 
+/**
+ * Limiares de correspondência aproximada (fuzzy). Quanto maior, mais exigente.
+ *  - SEARCH: usado nas buscas (mais tolerante, para "puxar" resultados).
+ *  - MATCH:  usado no algoritmo de match (mais exigente, evita falsos pares).
+ */
+export const FUZZY_SEARCH_THRESHOLD = 0.62;
+export const FUZZY_MATCH_THRESHOLD = 0.72;
+/** Similaridade mínima para sugerir duas habilidades como possíveis duplicatas. */
+export const FUZZY_DUPLICATE_THRESHOLD = 0.8;
+
 /** Pesos do algoritmo de match (somam 100). */
 export const MATCH_WEIGHTS = {
   reciprocity: 50, // troca recíproca de habilidades (núcleo do match)

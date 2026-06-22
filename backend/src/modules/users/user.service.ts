@@ -4,6 +4,8 @@ import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
 import { parseJsonArray, stringifyArray } from '../../utils/json';
 import { comparePassword } from '../../utils/password';
+import { fuzzyQueryScore } from '../../utils/fuzzy';
+import { FUZZY_SEARCH_THRESHOLD } from '../../utils/constants';
 import {
   NotFoundError,
   BadRequestError,
@@ -196,6 +198,26 @@ export async function getPublicProfile(viewerId: string, targetId: string) {
   };
 }
 
+/**
+ * Relevância textual (0–1) de um usuário para o termo buscado: o melhor entre
+ * o nome, a bio e os nomes das habilidades que ensina — com fuzzy matching.
+ */
+function userSearchRelevance(user: any, term: string): number {
+  // `teachingSkills` (com `skill`) sempre vem incluído em searchUsers.
+  const texts: Array<string | null | undefined> = [
+    user.name,
+    user.bio,
+    ...user.teachingSkills.map((t: any) => t.skill.name),
+  ];
+  let best = 0;
+  for (const text of texts) {
+    if (!text) continue;
+    best = Math.max(best, fuzzyQueryScore(text, term));
+    if (best >= 1) break;
+  }
+  return best;
+}
+
 /** Busca avançada de usuários com filtros e ordenação por compatibilidade. */
 export async function searchUsers(userId: string, f: SearchInput) {
   const where: any = { id: { not: userId }, onboardingCompleted: true, isActive: true };
@@ -221,13 +243,10 @@ export async function searchUsers(userId: string, f: SearchInput) {
   if (f.nationality) profileFilter.nationality = { contains: f.nationality };
   if (Object.keys(profileFilter).length > 0) where.profile = profileFilter;
 
-  if (f.q) {
-    where.OR = [
-      { name: { contains: f.q } },
-      { bio: { contains: f.q } },
-      { teachingSkills: { some: { skill: { name: { contains: f.q } } } } },
-    ];
-  }
+  // A relevância textual (`f.q`) é avaliada em memória com correspondência
+  // aproximada (fuzzy), logo NÃO entra no `where` do Prisma — assim toleramos
+  // acento, caixa, erro de digitação e variações no nome/bio/habilidades.
+  const term = f.q?.trim();
 
   const me = await prisma.user.findUnique({ where: { id: userId }, include: matchInclude });
   if (!me) throw new NotFoundError('Usuário não encontrado');
@@ -261,8 +280,20 @@ export async function searchUsers(userId: string, f: SearchInput) {
   }
 
   const meMatch = toMatchUser(me);
-  const scored = users.map((user) => ({ user, match: calculateMatch(meMatch, toMatchUser(user)) }));
-  scored.sort((a, b) => b.match.score - a.match.score);
+  let scored = users.map((user) => ({
+    user,
+    match: calculateMatch(meMatch, toMatchUser(user)),
+    relevance: term ? userSearchRelevance(user, term) : 1,
+  }));
+
+  if (term) {
+    // Mantém apenas quem é textualmente relevante e ordena por relevância,
+    // usando a compatibilidade (match) como critério de desempate.
+    scored = scored.filter((s) => s.relevance >= FUZZY_SEARCH_THRESHOLD);
+    scored.sort((a, b) => b.relevance - a.relevance || b.match.score - a.match.score);
+  } else {
+    scored.sort((a, b) => b.match.score - a.match.score);
+  }
 
   const total = scored.length;
   const start = (f.page - 1) * f.limit;

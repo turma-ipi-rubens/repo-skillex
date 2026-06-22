@@ -61,6 +61,52 @@ describe('GET /api/stats/ranking', () => {
     expect(ids).toContain(b.user.id);
     expect(res.body.ranking[0].position).toBe(1);
   });
+
+  it('ordena dois usuários reputados e conta trocas só das concluídas', async () => {
+    const viewer = await makeUser({ onboardingCompleted: true });
+    const top = await makeUser({ onboardingCompleted: true });
+    const second = await makeUser({ onboardingCompleted: true });
+    const skill = await makeSkill('Aula Ranking 2');
+    await addTeaching(top.user.id, skill.id);
+    await addTeaching(second.user.id, skill.id);
+
+    // `top`: nota 5 numa troca CONCLUÍDA → entra na contagem de trocas.
+    // `second`: nota 3 numa troca apenas ACEITA → tem avaliação mas ZERO trocas
+    //           concluídas (exercita o fallback `completedCount.get(id) ?? 0`).
+    const reqTop = await prisma.exchangeRequest.create({
+      data: {
+        requesterId: viewer.user.id,
+        recipientId: top.user.id,
+        requestedSkillId: skill.id,
+        type: 'COIN',
+        status: 'COMPLETED',
+        coinAmount: 10,
+      },
+    });
+    await prisma.review.create({
+      data: { requestId: reqTop.id, authorId: viewer.user.id, targetId: top.user.id, skillId: skill.id, rating: 5 },
+    });
+
+    const reqSecond = await prisma.exchangeRequest.create({
+      data: {
+        requesterId: viewer.user.id,
+        recipientId: second.user.id,
+        requestedSkillId: skill.id,
+        type: 'COIN',
+        status: 'ACCEPTED',
+        coinAmount: 10,
+      },
+    });
+    await prisma.review.create({
+      data: { requestId: reqSecond.id, authorId: viewer.user.id, targetId: second.user.id, skillId: skill.id, rating: 3 },
+    });
+
+    const res = await api.get('/api/stats/ranking').set('Authorization', bearer(viewer.token));
+    const ids = res.body.ranking.map((u: any) => u.id);
+    expect(ids.indexOf(top.user.id)).toBeLessThan(ids.indexOf(second.user.id));
+    const secondRow = res.body.ranking.find((u: any) => u.id === second.user.id);
+    expect(secondRow.completedExchanges).toBe(0);
+  });
 });
 
 describe('GET /api/stats/overview', () => {

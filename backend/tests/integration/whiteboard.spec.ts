@@ -3,6 +3,7 @@ import { api, bearer } from '../helpers/app';
 import { makeUser, makeSkill, addTeaching } from '../helpers/factories';
 import { prisma } from '../../src/config/prisma';
 import * as requestService from '../../src/modules/requests/request.service';
+import * as whiteboardService from '../../src/modules/whiteboard/whiteboard.service';
 
 /**
  * Cenário base: cria uma solicitação ACEITA entre dois usuários, retornando os
@@ -134,6 +135,21 @@ describe('POST /api/requests/:id/whiteboard/strokes', () => {
       .set('Authorization', bearer(requester.token))
       .send({ tool: 'TEXT', color: '#000000', size: 12, points: [[0.5, 0.5]] });
     expect(res.status).toBe(422);
+  });
+
+  it('serviço: TEXT sem texto persiste com text nulo (fallback defensivo)', async () => {
+    // O schema HTTP exige texto para TEXT; chamamos o service direto para
+    // exercitar o fallback `data.text ?? null`.
+    const { requester, requestId } = await setupAccepted();
+    const stroke = await whiteboardService.addStroke(requester.user.id, requestId, {
+      tool: 'TEXT',
+      color: '#000000',
+      size: 12,
+      points: [[0.5, 0.5]],
+      text: undefined,
+      pageIndex: 0,
+    });
+    expect(stroke.text).toBeNull();
   });
 
   it('rejeita cor inválida (422)', async () => {

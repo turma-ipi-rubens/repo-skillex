@@ -35,6 +35,7 @@ function bucketize<T extends { createdAt: Date }>(rows: T[], days: number): Arra
   const buckets = buildDayBuckets(days);
   for (const r of rows) {
     const key = isoDay(startOfDay(r.createdAt));
+    /* v8 ignore next -- as consultas já filtram pelo range; a chave sempre existe */
     if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
   }
   return Array.from(buckets, ([date, value]) => ({ date, value }));
@@ -122,6 +123,7 @@ export async function getDistributions() {
     transactionsByType: transactionsByType.map((r) => ({
       label: r.type,
       value: r._count._all,
+      /* v8 ignore next -- grupo sempre tem linhas com amount não-nulo → soma nunca é null */
       total: r._sum.amount ?? 0,
     })),
   };

@@ -1,11 +1,22 @@
 import { Response } from 'express';
 import * as reportService from './report.service';
 import { AuthRequest } from '../../middlewares/auth';
+import { recordAudit, auditContext } from '../audit/audit.service';
 import { createReportSchema, resolveReportSchema } from './report.schemas';
 
 export async function create(req: AuthRequest, res: Response): Promise<Response> {
   const data = createReportSchema.parse(req.body);
-  return res.status(201).json({ report: await reportService.createReport(req.userId!, data) });
+  const report = await reportService.createReport(req.userId!, data);
+  await recordAudit({
+    ...auditContext(req),
+    action: 'REPORT_CREATED',
+    category: 'CONTENT',
+    entityType: 'Report',
+    entityId: report.id,
+    summary: `Registrou uma denúncia (${data.type})`,
+    metadata: { type: data.type, targetId: data.targetId, requestId: data.requestId },
+  });
+  return res.status(201).json({ report });
 }
 
 export async function listAdmin(req: AuthRequest, res: Response): Promise<Response> {
@@ -17,7 +28,17 @@ export async function listAdmin(req: AuthRequest, res: Response): Promise<Respon
 
 export async function resolve(req: AuthRequest, res: Response): Promise<Response> {
   const data = resolveReportSchema.parse(req.body);
-  return res.json({ report: await reportService.resolveReport(req.params.id, req.userId!, data) });
+  const report = await reportService.resolveReport(req.params.id, req.userId!, data);
+  await recordAudit({
+    ...auditContext(req),
+    action: 'REPORT_MODERATED',
+    category: 'ADMIN',
+    entityType: 'Report',
+    entityId: report.id,
+    summary: `Atualizou uma denúncia para "${report.status}"`,
+    metadata: { status: report.status, adminNote: data.adminNote },
+  });
+  return res.json({ report });
 }
 
 export async function listMine(req: AuthRequest, res: Response): Promise<Response> {

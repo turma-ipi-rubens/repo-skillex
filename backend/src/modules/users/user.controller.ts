@@ -2,6 +2,7 @@ import { Response } from 'express';
 import * as userService from './user.service';
 import { AuthRequest } from '../../middlewares/auth';
 import { BadRequestError } from '../../utils/errors';
+import { recordAudit, auditContext } from '../audit/audit.service';
 import {
   updateBasicSchema,
   updateProfileSchema,
@@ -37,7 +38,16 @@ export async function uploadFeedCover(req: AuthRequest, res: Response): Promise<
 
 export async function deleteAccount(req: AuthRequest, res: Response): Promise<Response> {
   const { password } = deleteAccountSchema.parse(req.body);
-  return res.json(await userService.deleteAccount(req.userId!, password));
+  const result = await userService.deleteAccount(req.userId!, password);
+  await recordAudit({
+    ...auditContext(req),
+    action: 'ACCOUNT_DELETED',
+    category: 'SECURITY',
+    entityType: 'User',
+    entityId: req.userId,
+    summary: 'Conta excluída/anonimizada pelo próprio usuário (LGPD)',
+  });
+  return res.json(result);
 }
 
 export async function getPublicProfile(req: AuthRequest, res: Response): Promise<Response> {

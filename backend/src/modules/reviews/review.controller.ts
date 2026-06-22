@@ -1,11 +1,22 @@
 import { Request, Response } from 'express';
 import * as reviewService from './review.service';
 import { AuthRequest } from '../../middlewares/auth';
+import { recordAudit, auditContext } from '../audit/audit.service';
 import { createReviewSchema } from './review.schemas';
 
 export async function create(req: AuthRequest, res: Response): Promise<Response> {
   const data = createReviewSchema.parse(req.body);
-  return res.status(201).json({ review: await reviewService.createReview(req.userId!, data) });
+  const review = await reviewService.createReview(req.userId!, data);
+  await recordAudit({
+    ...auditContext(req),
+    action: 'REVIEW_CREATED',
+    category: 'CONTENT',
+    entityType: 'Review',
+    entityId: review.id,
+    summary: `Avaliou uma troca/aula com ${data.rating} estrela(s)`,
+    metadata: { rating: data.rating, requestId: data.requestId },
+  });
+  return res.status(201).json({ review });
 }
 
 export async function listForUser(req: Request, res: Response): Promise<Response> {

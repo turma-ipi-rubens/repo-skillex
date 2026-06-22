@@ -17,6 +17,16 @@ export function toMatchUser(user: any): MatchUser {
     id: user.id,
     teachSkillIds: (user.teachingSkills ?? []).map((t: any) => t.skillId),
     learnSkillIds: (user.learningSkills ?? []).map((l: any) => l.skillId),
+    // Nomes das habilidades → habilitam a correspondência aproximada (fuzzy)
+    // no algoritmo (ids diferentes mas nomes parecidos ainda dão match).
+    teachSkills: (user.teachingSkills ?? []).map((t: any) => ({
+      id: t.skillId,
+      name: t.skill?.name ?? '',
+    })),
+    learnSkills: (user.learningSkills ?? []).map((l: any) => ({
+      id: l.skillId,
+      name: l.skill?.name ?? '',
+    })),
     city: user.city,
     state: user.state,
     languages: user.profile ? parseJsonArray(user.profile.languages) : [],

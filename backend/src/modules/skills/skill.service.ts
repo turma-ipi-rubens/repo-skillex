@@ -1,6 +1,8 @@
 import { prisma } from '../../config/prisma';
 import { slugify } from '../../utils/slug';
 import { stringifyArray } from '../../utils/json';
+import { rankByFuzzy } from '../../utils/fuzzy';
+import { FUZZY_SEARCH_THRESHOLD } from '../../utils/constants';
 import { NotFoundError, ConflictError, BadRequestError } from '../../utils/errors';
 import {
   presentSkill,
@@ -64,19 +66,29 @@ export async function listCategories() {
 }
 
 export async function listSkills(q?: string, categoryId?: string) {
+  const term = q?.trim();
+
+  // Com busca, carregamos um conjunto maior (sem o filtro exato de nome) e
+  // aplicamos a correspondência aproximada em memória — assim "javascrpit"
+  // ainda encontra "JavaScript" e "programação js" encontra "Programação JS".
   const skills = await prisma.skill.findMany({
-    where: {
-      ...(q ? { name: { contains: q } } : {}),
-      ...(categoryId ? { categoryId } : {}),
-    },
+    where: { ...(categoryId ? { categoryId } : {}) },
     include: {
       category: true,
       _count: { select: { teachingLinks: true, learningLinks: true } },
     },
     orderBy: { name: 'asc' },
-    take: 120,
+    take: term ? 1000 : 120,
   });
-  return skills.map((s) => ({
+
+  const ordered = term
+    ? rankByFuzzy(skills, term, (s) => s.name, {
+        threshold: FUZZY_SEARCH_THRESHOLD,
+        limit: 120,
+      }).map((r) => r.item)
+    : skills;
+
+  return ordered.map((s) => ({
     ...presentSkill(s),
     teachersCount: s._count.teachingLinks,
     learnersCount: s._count.learningLinks,

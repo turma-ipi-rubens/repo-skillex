@@ -6,6 +6,7 @@ import { slugify } from '../../src/utils/slug';
  * Chamado em `beforeEach` (ver tests/setup.ts) para isolar cada teste.
  */
 export async function resetDb(): Promise<void> {
+  await prisma.auditLog.deleteMany();
   await prisma.report.deleteMany();
   await prisma.exchangeRequestEvent.deleteMany();
   await prisma.chatMessage.deleteMany();

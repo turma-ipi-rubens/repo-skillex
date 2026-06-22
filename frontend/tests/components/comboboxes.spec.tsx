@@ -74,6 +74,20 @@ describe('Combobox', () => {
     expect(screen.getByText('Sem resultados')).toBeInTheDocument();
   });
 
+  it('cai para busca aproximada (typo) e ordena vários resultados por score', () => {
+    const opts = [
+      { value: 'a', label: 'Brasil' },
+      { value: 'b', label: 'Brasília' },
+    ];
+    render(<Combobox id="cbf" options={opts} value="" onChange={vi.fn()} placeholder="p" />);
+    const input = screen.getByPlaceholderText('p');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Brasul' } }); // sem substring exata
+    const options = screen.getAllByRole('option');
+    expect(options.length).toBeGreaterThanOrEqual(2);
+    expect(options[0].textContent).toBe('Brasil'); // mais próximo primeiro
+  });
+
   it('seleciona opção ao mouseDown e fecha a lista', () => {
     const onChange = vi.fn();
     const { container } = render(
@@ -308,6 +322,20 @@ describe('MultiCombobox', () => {
     fireEvent.keyDown(input, { key: 'Backspace' });
     // sem valores para remover → sem chip
     expect(screen.queryByRole('listbox')).toBeInTheDocument();
+  });
+
+  it('cai para busca aproximada (typo) e ordena vários resultados por score', () => {
+    const opts = [
+      { value: 'a', label: 'Brasil' },
+      { value: 'b', label: 'Brasília' },
+    ];
+    render(<MultiCombobox options={opts} values={[]} onChange={vi.fn()} placeholder="p" />);
+    const input = screen.getByPlaceholderText('p');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Brasul' } });
+    const options = screen.getAllByRole('option');
+    expect(options.length).toBeGreaterThanOrEqual(2);
+    expect(options[0].textContent).toBe('Brasil');
   });
 
   it('Escape fecha a lista', () => {

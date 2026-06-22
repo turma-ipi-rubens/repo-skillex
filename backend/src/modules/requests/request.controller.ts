@@ -1,11 +1,26 @@
 import { Response } from 'express';
 import * as requestService from './request.service';
 import { AuthRequest } from '../../middlewares/auth';
+import { recordAudit, auditContext } from '../audit/audit.service';
 import { createRequestSchema, sendMessageSchema } from './request.schemas';
+
+/** Registra na auditoria uma mudança de estado de solicitação (categoria CONTENT). */
+function auditRequest(req: AuthRequest, request: { id: string }, action: string, label: string): Promise<void> {
+  return recordAudit({
+    ...auditContext(req),
+    action,
+    category: 'CONTENT',
+    entityType: 'ExchangeRequest',
+    entityId: request.id,
+    summary: label,
+  });
+}
 
 export async function create(req: AuthRequest, res: Response): Promise<Response> {
   const data = createRequestSchema.parse(req.body);
-  return res.status(201).json({ request: await requestService.createRequest(req.userId!, data) });
+  const request = await requestService.createRequest(req.userId!, data);
+  await auditRequest(req, request, 'REQUEST_CREATED', 'Criou uma solicitação de troca/aula');
+  return res.status(201).json({ request });
 }
 
 export async function list(req: AuthRequest, res: Response): Promise<Response> {
@@ -21,19 +36,27 @@ export async function detail(req: AuthRequest, res: Response): Promise<Response>
 }
 
 export async function accept(req: AuthRequest, res: Response): Promise<Response> {
-  return res.json({ request: await requestService.acceptRequest(req.userId!, req.params.id) });
+  const request = await requestService.acceptRequest(req.userId!, req.params.id);
+  await auditRequest(req, request, 'REQUEST_ACCEPTED', 'Aceitou uma solicitação');
+  return res.json({ request });
 }
 
 export async function reject(req: AuthRequest, res: Response): Promise<Response> {
-  return res.json({ request: await requestService.rejectRequest(req.userId!, req.params.id) });
+  const request = await requestService.rejectRequest(req.userId!, req.params.id);
+  await auditRequest(req, request, 'REQUEST_REJECTED', 'Recusou uma solicitação');
+  return res.json({ request });
 }
 
 export async function cancel(req: AuthRequest, res: Response): Promise<Response> {
-  return res.json({ request: await requestService.cancelRequest(req.userId!, req.params.id) });
+  const request = await requestService.cancelRequest(req.userId!, req.params.id);
+  await auditRequest(req, request, 'REQUEST_CANCELLED', 'Cancelou uma solicitação');
+  return res.json({ request });
 }
 
 export async function complete(req: AuthRequest, res: Response): Promise<Response> {
-  return res.json({ request: await requestService.completeRequest(req.userId!, req.params.id) });
+  const request = await requestService.completeRequest(req.userId!, req.params.id);
+  await auditRequest(req, request, 'REQUEST_COMPLETED', 'Concluiu uma solicitação');
+  return res.json({ request });
 }
 
 export async function listMessages(req: AuthRequest, res: Response): Promise<Response> {

@@ -16,6 +16,17 @@ export default defineConfig({
       JWT_EXPIRES_IN: '1h',
       NODE_ENV: 'test',
       CLIENT_URL: 'http://localhost:5173',
+      // Definidas (não-vazias, exceto o secret) para que o load do env.ts
+      // exercite o ramo "valor presente" de cada `??`/`||`. O secret fica
+      // vazio para preservar o 503 padrão da vídeo chamada nos testes; e os
+      // rate limits usam os mesmos defaults (sem alterar comportamento).
+      JITSI_DOMAIN: 'jitsi.localhost:8000',
+      JITSI_APP_ID: 'skillex',
+      JITSI_APP_SECRET: '',
+      RATE_LIMIT_GLOBAL_WINDOW_MS: '60000',
+      RATE_LIMIT_GLOBAL_MAX: '300',
+      RATE_LIMIT_AUTH_WINDOW_MS: '900000',
+      RATE_LIMIT_AUTH_MAX: '10',
     },
     globalSetup: ['./tests/global-setup.ts'],
     setupFiles: ['./tests/setup.ts'],

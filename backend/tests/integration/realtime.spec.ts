@@ -220,3 +220,48 @@ describe('chat em tempo real (room request:<id>)', () => {
     expect(socket.connected).toBe(true);
   });
 });
+
+describe('quadro colaborativo em tempo real (relays whiteboard:live / whiteboard:cursor)', () => {
+  /** Conecta os dois participantes e os coloca na room da solicitação. */
+  async function joinBoth() {
+    const { alice, bob, request } = await makeAcceptedRequest();
+    const aliceSocket = connect(alice.token);
+    const bobSocket = connect(bob.token);
+    await Promise.all([waitConnect(aliceSocket), waitConnect(bobSocket)]);
+
+    const aJoined = waitEvent(aliceSocket, 'request:joined');
+    const bJoined = waitEvent(bobSocket, 'request:joined');
+    aliceSocket.emit('request:join', request.id);
+    bobSocket.emit('request:join', request.id);
+    await Promise.all([aJoined, bJoined]);
+    return { aliceSocket, bobSocket, request };
+  }
+
+  it('retransmite whiteboard:live para o outro participante com fromUserId', async () => {
+    const { aliceSocket, bobSocket, request } = await joinBoth();
+    const received = waitEvent<any>(bobSocket, 'whiteboard:live');
+    aliceSocket.emit('whiteboard:live', { requestId: request.id, x: 0.5, y: 0.5 });
+    const payload = await received;
+    expect(payload.x).toBe(0.5);
+    expect(payload.fromUserId).toBeTruthy();
+  });
+
+  it('retransmite whiteboard:cursor para o outro participante', async () => {
+    const { aliceSocket, bobSocket, request } = await joinBoth();
+    const received = waitEvent<any>(bobSocket, 'whiteboard:cursor');
+    aliceSocket.emit('whiteboard:cursor', { requestId: request.id, x: 0.1, y: 0.2 });
+    const payload = await received;
+    expect(payload.fromUserId).toBeTruthy();
+  });
+
+  it('ignora payloads inválidos de whiteboard:live e whiteboard:cursor', async () => {
+    const { aliceSocket } = await joinBoth();
+    // Sem requestId / não-objeto → early return, sem derrubar o servidor.
+    aliceSocket.emit('whiteboard:live', null);
+    aliceSocket.emit('whiteboard:live', { x: 1 });
+    aliceSocket.emit('whiteboard:cursor', null);
+    aliceSocket.emit('whiteboard:cursor', { y: 2 });
+    await new Promise((r) => setTimeout(r, 150));
+    expect(aliceSocket.connected).toBe(true);
+  });
+});

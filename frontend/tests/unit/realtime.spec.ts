@@ -9,6 +9,8 @@ import {
   subscribeRealtime,
   joinRequestRoom,
   leaveRequestRoom,
+  emitWhiteboardLive,
+  emitWhiteboardCursor,
 } from '../../src/services/realtime';
 import { setToken } from '../../src/services/api';
 
@@ -159,6 +161,24 @@ describe('rooms de solicitação', () => {
       joinRequestRoom('r1');
       joinRequestRoom('r2');
       leaveRequestRoom();
+    }).not.toThrow();
+  });
+});
+
+describe('relays do quadro (whiteboard:live / whiteboard:cursor)', () => {
+  it('emite whiteboard:live e whiteboard:cursor quando conectado', () => {
+    setToken('tok');
+    connectRealtime();
+    emitWhiteboardLive({ requestId: 'r1', x: 0.5 });
+    emitWhiteboardCursor({ requestId: 'r1', y: 0.2 });
+    expect(fakeSocket.emit).toHaveBeenCalledWith('whiteboard:live', { requestId: 'r1', x: 0.5 });
+    expect(fakeSocket.emit).toHaveBeenCalledWith('whiteboard:cursor', { requestId: 'r1', y: 0.2 });
+  });
+
+  it('sem conexão ativa não quebram (no-op)', () => {
+    expect(() => {
+      emitWhiteboardLive({ requestId: 'r1' });
+      emitWhiteboardCursor({ requestId: 'r1' });
     }).not.toThrow();
   });
 });

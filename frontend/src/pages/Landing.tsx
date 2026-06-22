@@ -1,5 +1,6 @@
 /** Landing page pública de apresentação da plataforma (rota /). */
 import { Link, Navigate } from 'react-router-dom';
+import { CookieConsent } from '../components/CookieConsent';
 import { Icon } from '../components/ui/Icon';
 import { Spinner } from '../components/ui/Spinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -298,6 +299,8 @@ export function Landing() {
           </span>
         </div>
       </footer>
+
+      <CookieConsent />
     </div>
   );
 }

@@ -68,6 +68,19 @@ describe('UserCard', () => {
     expect(screen.getByText('Quer aprender:')).toBeInTheDocument();
   });
 
+  it('renderiza a capa do feed quando feedCoverUrl está presente', () => {
+    const { container } = renderCard({
+      id: 'u5',
+      name: 'Capa',
+      feedCoverUrl: '/uploads/cover.png',
+      teachingSkills: [],
+      learningSkills: [],
+    });
+    const cover = container.querySelector('.user-card__cover') as HTMLElement;
+    expect(cover).toBeTruthy();
+    expect(cover.style.backgroundImage).toContain('/uploads/cover.png');
+  });
+
   it('cobre cidade sem estado e match não recíproco', () => {
     renderCard({
       id: 'u3',

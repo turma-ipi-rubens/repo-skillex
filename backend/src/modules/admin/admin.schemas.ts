@@ -33,3 +33,21 @@ export type SkillCreateInput = z.infer<typeof skillCreateSchema>;
 
 export const skillUpdateSchema = skillCreateSchema.partial();
 export type SkillUpdateInput = z.infer<typeof skillUpdateSchema>;
+
+export const mergeSkillsSchema = z.object({
+  fromId: z.string().min(1, 'Informe a habilidade de origem'),
+  intoId: z.string().min(1, 'Informe a habilidade de destino'),
+});
+export type MergeSkillsInput = z.infer<typeof mergeSkillsSchema>;
+
+export const listAuditSchema = z.object({
+  q: z.string().max(120).optional(),
+  action: z.string().max(60).optional(),
+  category: z.enum(['ADMIN', 'SECURITY', 'CONTENT']).optional(),
+  actorId: z.string().max(40).optional(),
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type ListAuditInput = z.infer<typeof listAuditSchema>;

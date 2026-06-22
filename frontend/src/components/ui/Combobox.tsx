@@ -1,5 +1,6 @@
 /** Combobox/autocomplete que aceita apenas valores existentes na lista. */
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { fuzzyQueryScore } from '../../utils/fuzzy';
 
 export interface ComboboxOption {
   value: string;
@@ -61,7 +62,16 @@ export function Combobox({
   const filtered = useMemo(() => {
     const q = normalize(query.trim());
     if (!q) return options.slice(0, 100);
-    return options.filter((o) => normalize(o.label).includes(q)).slice(0, 100);
+    const substring = options.filter((o) => normalize(o.label).includes(q));
+    if (substring.length > 0) return substring.slice(0, 100);
+    // Sem correspondência exata por substring: cai para busca aproximada
+    // (tolera acento/caixa/erro de digitação), como em um buscador.
+    return options
+      .map((o) => ({ o, score: fuzzyQueryScore(o.label, query.trim()) }))
+      .filter((r) => r.score >= 0.6)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 100)
+      .map((r) => r.o);
   }, [options, query]);
 
   const select = (opt: ComboboxOption) => {
