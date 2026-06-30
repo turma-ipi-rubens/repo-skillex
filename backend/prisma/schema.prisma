@@ -65,6 +65,9 @@ model User {
   reportsResolved     Report[]             @relation("ReportsResolved")
   whiteboardStrokes   WhiteboardStroke[]
   auditLogs           AuditLog[]           @relation("AuditActor")
+  posts               Post[]
+  postLikes           PostLike[]
+  postComments        PostComment[]
 
   @@map("users")
 }
@@ -101,6 +104,7 @@ model UserProfile {
   learningPrefs     String? // JSON: ["Prático","Teórico"]
   availability      String? // JSON: ["MORNING","NIGHT","WEEKEND"]
   preferredModality String? // ONLINE | IN_PERSON | BOTH
+  socialLinks       String? // JSON: [{"platform":"INSTAGRAM","url":"https://..."}]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -475,4 +479,61 @@ model WhiteboardStroke {
 
   @@index([requestId, createdAt])
   @@map("whiteboard_strokes")
+}
+
+// ----------------------------------------------------------------------------
+//  PUBLICAÇÃO — post do usuário, exibido no perfil e no feed principal.
+//  Texto livre + imagem opcional (mesmo esquema de upload do avatar).
+// ----------------------------------------------------------------------------
+model Post {
+  id       String  @id @default(cuid())
+  authorId String
+  author   User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  content  String
+  imageUrl String? // /uploads/<arquivo> quando há imagem
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  likes    PostLike[]
+  comments PostComment[]
+
+  @@index([authorId, createdAt])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+// ----------------------------------------------------------------------------
+//  CURTIDA — relação única usuário↔post (um like por pessoa).
+// ----------------------------------------------------------------------------
+model PostLike {
+  id     String @id @default(cuid())
+  postId String
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+// ----------------------------------------------------------------------------
+//  COMENTÁRIO — texto vinculado a um post.
+// ----------------------------------------------------------------------------
+model PostComment {
+  id       String @id @default(cuid())
+  postId   String
+  post     Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  content String
+
+  createdAt DateTime @default(now())
+
+  @@index([postId, createdAt])
+  @@map("post_comments")
 }

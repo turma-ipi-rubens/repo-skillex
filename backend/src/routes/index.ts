@@ -11,6 +11,7 @@ import { notificationRoutes } from '../modules/notifications/notification.routes
 import { statsRoutes } from '../modules/stats/stats.routes';
 import { adminRoutes } from '../modules/admin/admin.routes';
 import { reportRoutes } from '../modules/reports/report.routes';
+import { postRoutes } from '../modules/posts/post.routes';
 
 export const routes = Router();
 
@@ -26,3 +27,4 @@ routes.use('/notifications', notificationRoutes);
 routes.use('/stats', statsRoutes);
 routes.use('/admin', adminRoutes);
 routes.use('/reports', reportRoutes);
+routes.use('/posts', postRoutes);

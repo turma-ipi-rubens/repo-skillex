@@ -83,6 +83,9 @@ function coverFor(skillName: string, seed: string): string {
 
 async function clean() {
   console.log('🧹 Limpando dados existentes...');
+  await prisma.postComment.deleteMany();
+  await prisma.postLike.deleteMany();
+  await prisma.post.deleteMany();
   await prisma.chatMessage.deleteMany();
   await prisma.exchangeRequestEvent.deleteMany();
   await prisma.review.deleteMany();
@@ -192,6 +195,7 @@ interface UserSpec {
   balance: number;
   teach: TeachSpec[];
   learn: LearnSpec[];
+  social?: { platform: string; url: string }[];
 }
 
 const USERS: UserSpec[] = [
@@ -224,6 +228,10 @@ const USERS: UserSpec[] = [
       },
     ],
     learn: [{ skill: 'Tricô', currentLevel: 'NONE', goal: 'Aprender a fazer um cachecol.' }],
+    social: [
+      { platform: 'INSTAGRAM', url: 'https://instagram.com/ana.violino' },
+      { platform: 'YOUTUBE', url: 'https://youtube.com/@anaviolino' },
+    ],
   },
   {
     key: 'bruno',
@@ -315,6 +323,10 @@ const USERS: UserSpec[] = [
       { skill: 'Programação Python', level: 'INTERMEDIATE', years: 4, coinPrice: 60 },
     ],
     learn: [{ skill: 'Inglês', currentLevel: 'INTERMEDIATE', goal: 'Fluência para entrevistas.' }],
+    social: [
+      { platform: 'GITHUB', url: 'https://github.com/fernandacosta' },
+      { platform: 'LINKEDIN', url: 'https://linkedin.com/in/fernandacosta' },
+    ],
   },
   {
     key: 'elena',
@@ -377,6 +389,10 @@ const USERS: UserSpec[] = [
     learn: [
       { skill: 'Culinária', currentLevel: 'BEGINNER', goal: 'Cozinhar pratos italianos.' },
       { skill: 'Marketing Digital', currentLevel: 'BEGINNER' },
+    ],
+    social: [
+      { platform: 'INSTAGRAM', url: 'https://instagram.com/felipe.design' },
+      { platform: 'WEBSITE', url: 'https://felipeandrade.design' },
     ],
   },
   {
@@ -559,6 +575,10 @@ const USERS: UserSpec[] = [
       },
     ],
     learn: [{ skill: 'Tricô', currentLevel: 'NONE', goal: 'Fazer um presente artesanal.' }],
+    social: [
+      { platform: 'INSTAGRAM', url: 'https://instagram.com/laura.fotografia' },
+      { platform: 'TIKTOK', url: 'https://tiktok.com/@laura.foto' },
+    ],
   },
 ];
 
@@ -608,6 +628,7 @@ async function main() {
             learningPrefs: json(['Prático', 'Online']),
             availability: json(u.availability),
             preferredModality: u.modality,
+            socialLinks: u.social ? JSON.stringify(u.social) : null,
           },
         },
         wallet: { create: { balance: u.balance, lockedBalance: 0 } },
@@ -932,6 +953,87 @@ async function main() {
       },
     ],
   });
+
+  console.log('📝 Criando publicações (posts), curtidas e comentários...');
+  interface PostSpec {
+    author: string;
+    content: string;
+    daysAgo: number;
+    likes: string[];
+    comments: { author: string; content: string }[];
+  }
+  const POSTS: PostSpec[] = [
+    {
+      author: 'ana',
+      content:
+        'Gravei um vídeo novo de aquecimento no violino para quem está começando 🎻 Pratiquem 10 minutinhos por dia que a evolução é garantida!',
+      daysAgo: 2,
+      likes: ['bruno', 'carlos', 'laura', 'joao'],
+      comments: [
+        { author: 'bruno', content: 'Que demais, Ana! Vou treinar hoje mesmo.' },
+        { author: 'laura', content: 'Adorei as dicas 👏' },
+      ],
+    },
+    {
+      author: 'fernanda',
+      content:
+        'Dica de JavaScript do dia: use `const` por padrão e só troque para `let` quando realmente precisar reatribuir. Código mais previsível ✨',
+      daysAgo: 1,
+      likes: ['carlos', 'joao', 'felipe'],
+      comments: [{ author: 'carlos', content: 'Salvou! Tava com essa dúvida.' }],
+    },
+    {
+      author: 'laura',
+      content:
+        'Ensaio de fotografia de produto concluído 📷 Luz natural ainda é imbatível para destacar texturas.',
+      daysAgo: 3,
+      likes: ['gabriela', 'ana', 'felipe'],
+      comments: [
+        { author: 'gabriela', content: 'As fotos ficaram incríveis!' },
+        { author: 'felipe', content: 'Que composição linda 😍' },
+      ],
+    },
+    {
+      author: 'felipe',
+      content:
+        'Acabei de finalizar a identidade visual de um restaurante italiano. Branding bem feito muda totalmente a percepção da marca 🎨',
+      daysAgo: 4,
+      likes: ['elena', 'gabriela'],
+      comments: [{ author: 'elena', content: 'Ficou maravilhoso, Felipe!' }],
+    },
+    {
+      author: 'bruno',
+      content: 'Novo cachecol de tricô saindo do forno 🧶 Quem quiser aprender, chama aqui!',
+      daysAgo: 0,
+      likes: ['ana', 'luiz'],
+      comments: [],
+    },
+  ];
+
+  for (const p of POSTS) {
+    const post = await prisma.post.create({
+      data: {
+        authorId: userMap[p.author],
+        content: p.content,
+        createdAt: daysAgo(p.daysAgo),
+      },
+    });
+    if (p.likes.length) {
+      await prisma.postLike.createMany({
+        data: p.likes.map((k) => ({ postId: post.id, userId: userMap[k] })),
+      });
+    }
+    for (const c of p.comments) {
+      await prisma.postComment.create({
+        data: {
+          postId: post.id,
+          authorId: userMap[c.author],
+          content: c.content,
+          createdAt: daysAgo(Math.max(0, p.daysAgo - 1)),
+        },
+      });
+    }
+  }
 
   console.log('\n✅ Seed concluído com sucesso!');
   console.log('   Usuários criados:', USERS.length);

@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { prisma } from '../../config/prisma';
 import { env } from '../../config/env';
-import { parseJsonArray, stringifyArray } from '../../utils/json';
+import { parseJsonArray, stringifyArray, stringifySocialLinks } from '../../utils/json';
 import { comparePassword } from '../../utils/password';
 import { fuzzyQueryScore } from '../../utils/fuzzy';
 import { FUZZY_SEARCH_THRESHOLD } from '../../utils/constants';
@@ -73,6 +73,8 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
       availability:
         input.availability !== undefined ? stringifyArray(input.availability) : undefined,
       preferredModality: input.preferredModality,
+      socialLinks:
+        input.socialLinks !== undefined ? stringifySocialLinks(input.socialLinks) : undefined,
     },
     create: {
       userId,
@@ -83,6 +85,7 @@ export async function updateProfile(userId: string, input: UpdateProfileInput) {
       learningPrefs: stringifyArray(input.learningPrefs),
       availability: stringifyArray(input.availability),
       preferredModality: input.preferredModality,
+      socialLinks: stringifySocialLinks(input.socialLinks),
     },
   });
   return getAuthUser(userId);

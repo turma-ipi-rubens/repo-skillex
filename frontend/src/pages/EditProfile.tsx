@@ -15,6 +15,7 @@ import { COUNTRIES, normalizeCountry } from '../utils/countries';
 import { validateImageFile } from '../utils/files';
 import { COMMON_LANGUAGES, normalizeLanguage } from '../utils/languages';
 import { AVAILABILITY_LABELS, GENDER_LABELS, MODALITY_LABELS } from '../utils/format';
+import { SOCIAL_PLATFORMS, socialLabel, type SocialLink } from '../utils/social';
 
 const AVAILABILITY = ['MORNING', 'AFTERNOON', 'NIGHT', 'WEEKEND'];
 
@@ -30,6 +31,7 @@ export function EditProfile() {
   const [stateUf, setStateUf] = useState('');
   const [nationality, setNationality] = useState('');
   const [languages, setLanguages] = useState<string[]>([]);
+  const [social, setSocial] = useState<SocialLink[]>([]);
 
   const [cropSrc, setCropSrc] = useState<string | null>(null);
 
@@ -55,6 +57,7 @@ export function EditProfile() {
       setLanguages(
         Array.from(new Set(langs.map(normalizeLanguage).filter(Boolean))),
       );
+      setSocial(Array.isArray(me.profile?.socialLinks) ? me.profile.socialLinks : []);
     });
     return () => {
       cancelled = true;
@@ -149,6 +152,21 @@ export function EditProfile() {
     });
   };
 
+  const addSocial = () => {
+    // Sugere a primeira plataforma ainda não usada.
+    const used = new Set(social.map((s) => s.platform));
+    const next = SOCIAL_PLATFORMS.find((p) => !used.has(p)) ?? SOCIAL_PLATFORMS[0];
+    setSocial((prev) => [...prev, { platform: next, url: '' }]);
+  };
+
+  const updateSocial = (index: number, patch: Partial<SocialLink>) => {
+    setSocial((prev) => prev.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  };
+
+  const removeSocial = (index: number) => {
+    setSocial((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
@@ -167,6 +185,9 @@ export function EditProfile() {
         languages,
         availability: [...availability],
         preferredModality: fd.get('preferredModality') || undefined,
+        socialLinks: social
+          .map((s) => ({ platform: s.platform, url: s.url.trim() }))
+          .filter((s) => s.url),
       });
       setUser(res.user);
       toast('Perfil atualizado!', 'success');
@@ -308,6 +329,54 @@ export function EditProfile() {
               </span>
             ))}
           </div>
+        </div>
+
+        <div className="section-title">Redes sociais</div>
+        <div className="social-edit" id="social-edit">
+          {social.length === 0 && (
+            <p className="muted" style={{ fontSize: '.85rem' }}>
+              Adicione links para o seu Instagram, LinkedIn, GitHub e mais.
+            </p>
+          )}
+          {social.map((s, i) => (
+            <div className="social-edit__row" key={i}>
+              <select
+                className="select"
+                value={s.platform}
+                onChange={(e) => updateSocial(i, { platform: e.target.value })}
+                aria-label="Plataforma"
+              >
+                {SOCIAL_PLATFORMS.map((p) => (
+                  <option key={p} value={p}>
+                    {socialLabel(p)}
+                  </option>
+                ))}
+              </select>
+              <input
+                className="input"
+                type="url"
+                inputMode="url"
+                placeholder="https://..."
+                value={s.url}
+                onChange={(e) => updateSocial(i, { url: e.target.value })}
+                aria-label="URL"
+              />
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={() => removeSocial(i)}
+                title="Remover"
+                aria-label="Remover rede"
+              >
+                <Icon name="trash" />
+              </button>
+            </div>
+          ))}
+          {social.length < 8 && (
+            <button type="button" className="btn btn--outline btn--sm" onClick={addSocial}>
+              <Icon name="plus-lg" /> Adicionar rede
+            </button>
+          )}
         </div>
 
         <div className="btn-row mt-16">

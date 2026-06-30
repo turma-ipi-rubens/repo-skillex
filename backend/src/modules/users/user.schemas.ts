@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { GENDERS, MODALITIES, SKILL_LEVELS, AVAILABILITY_SLOTS } from '../../utils/constants';
+import {
+  GENDERS,
+  MODALITIES,
+  SKILL_LEVELS,
+  AVAILABILITY_SLOTS,
+  SOCIAL_PLATFORMS,
+} from '../../utils/constants';
 import { createTeachingSkillSchema, createLearningSkillSchema } from '../skills/skill.schemas';
 
 /** Booleano vindo de query string ('true'/'false'). */
@@ -25,6 +31,15 @@ export const updateProfileSchema = z.object({
   learningPrefs: z.array(z.string().max(40)).max(20).optional(),
   availability: z.array(z.enum(AVAILABILITY_SLOTS)).optional(),
   preferredModality: z.enum(MODALITIES).optional(),
+  socialLinks: z
+    .array(
+      z.object({
+        platform: z.enum(SOCIAL_PLATFORMS),
+        url: z.string().trim().url('Informe uma URL válida').max(300),
+      }),
+    )
+    .max(8)
+    .optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 

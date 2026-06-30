@@ -1,7 +1,9 @@
 /** Perfil do usuário (próprio e de terceiros), com match, habilidades e avaliações. */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Avatar } from '../components/ui/Avatar';
+import { PostCard } from '../components/PostCard';
+import { PostComposer } from '../components/PostComposer';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Icon } from '../components/ui/Icon';
 import { MatchBadge } from '../components/ui/MatchBadge';
@@ -20,6 +22,7 @@ import {
   label,
   timeAgo,
 } from '../utils/format';
+import { socialIcon, socialLabel, type SocialLink } from '../utils/social';
 
 function TeachingCard({ s }: { s: any }) {
   return (
@@ -77,6 +80,11 @@ export function Profile() {
   const [fav, setFav] = useState(false);
   const [reporting, setReporting] = useState(false);
 
+  const [posts, setPosts] = useState<any[]>([]);
+  const [postsPage, setPostsPage] = useState(1);
+  const [postsHasMore, setPostsHasMore] = useState(false);
+  const [postsLoading, setPostsLoading] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
     setUser(null);
@@ -95,6 +103,36 @@ export function Profile() {
       cancelled = true;
     };
   }, [targetId]);
+
+  const loadPosts = useCallback(
+    async (page: number, append: boolean) => {
+      setPostsLoading(true);
+      try {
+        const data = await api.get(`/users/${targetId}/posts?page=${page}&limit=10`);
+        setPosts((prev) => (append ? [...prev, ...data.items] : data.items));
+        setPostsHasMore(Boolean(data.hasMore));
+      } catch {
+        if (!append) setPosts([]);
+      } finally {
+        setPostsLoading(false);
+      }
+    },
+    [targetId],
+  );
+
+  useEffect(() => {
+    setPostsPage(1);
+    loadPosts(1, false);
+  }, [loadPosts]);
+
+  const loadMorePosts = () => {
+    const next = postsPage + 1;
+    setPostsPage(next);
+    loadPosts(next, true);
+  };
+
+  const onPostCreated = (post: any) => setPosts((prev) => [post, ...prev]);
+  const onPostDeleted = (id: string) => setPosts((prev) => prev.filter((p) => p.id !== id));
 
   if (error) return <EmptyState icon="emoji-frown" title="Perfil não encontrado" />;
   if (!user) {
@@ -161,6 +199,24 @@ export function Profile() {
           <p className="muted" style={{ maxWidth: 340 }}>
             {user.bio}
           </p>
+        ) : null}
+
+        {user.profile?.socialLinks?.length ? (
+          <div className="social-links" id="social-links">
+            {(user.profile.socialLinks as SocialLink[]).map((s) => (
+              <a
+                key={s.platform + s.url}
+                className="social-links__item"
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={socialLabel(s.platform)}
+                aria-label={socialLabel(s.platform)}
+              >
+                <Icon name={socialIcon(s.platform)} />
+              </a>
+            ))}
+          </div>
         ) : null}
 
         <div className="profile-header__stats">
@@ -276,6 +332,35 @@ export function Profile() {
             <LearningCard key={s.id} s={s} />
           ))}
         </>
+      )}
+
+      <div className="section-title">
+        <Icon name="card-text" /> Publicações
+      </div>
+      {isOwn && <PostComposer onCreated={onPostCreated} />}
+      {posts.length > 0 ? (
+        <>
+          {posts.map((p) => (
+            <PostCard key={p.id} post={p} onDeleted={onPostDeleted} />
+          ))}
+          {postsHasMore && (
+            <button
+              className="btn btn--secondary btn--block"
+              onClick={loadMorePosts}
+              disabled={postsLoading}
+            >
+              {postsLoading ? 'Carregando...' : 'Carregar mais'}
+            </button>
+          )}
+        </>
+      ) : (
+        !postsLoading && (
+          <div className="card">
+            <p className="muted">
+              {isOwn ? 'Você ainda não publicou nada.' : 'Nenhuma publicação ainda.'}
+            </p>
+          </div>
+        )
       )}
 
       <div className="section-title">

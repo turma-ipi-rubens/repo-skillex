@@ -10,6 +10,18 @@ export const GENDERS = ['MALE', 'FEMALE', 'OTHER', 'UNDISCLOSED'] as const;
 export const PREFERRED_GENDERS = ['MALE', 'FEMALE', 'OTHER', 'ANY'] as const;
 export const AVAILABILITY_SLOTS = ['MORNING', 'AFTERNOON', 'NIGHT', 'WEEKEND'] as const;
 
+/** Redes sociais que o usuário pode vincular ao perfil. */
+export const SOCIAL_PLATFORMS = [
+  'INSTAGRAM',
+  'LINKEDIN',
+  'GITHUB',
+  'TWITTER',
+  'YOUTUBE',
+  'FACEBOOK',
+  'TIKTOK',
+  'WEBSITE',
+] as const;
+
 export const REQUEST_STATUS = [
   'PENDING',
   'ACCEPTED',

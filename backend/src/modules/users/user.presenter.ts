@@ -1,4 +1,4 @@
-import { parseJsonArray } from '../../utils/json';
+import { parseJsonArray, parseSocialLinks } from '../../utils/json';
 
 /**
  * Camada de apresentação (DTO): converte modelos do Prisma em objetos seguros
@@ -80,6 +80,7 @@ export function presentProfile(profile: any | null | undefined) {
     learningPrefs: parseJsonArray(profile.learningPrefs),
     availability: parseJsonArray(profile.availability),
     preferredModality: profile.preferredModality ?? null,
+    socialLinks: parseSocialLinks(profile.socialLinks),
   };
 }
 
